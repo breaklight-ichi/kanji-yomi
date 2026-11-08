@@ -1,0 +1,581 @@
+<!doctype html><meta charset="utf-8">
+<html lang="ja">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>漢字よみカメラ</title>
+<meta name="theme-color" content="#1d2433">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#666;--line:#ddd;--acc:#c62828;--btn:#1d2433;--btnink:#fff;--soft:#eef1f6;--rt:#b23a1e}
+@media (prefers-color-scheme:dark){:root{--bg:#15171c;--card:#1f232b;--ink:#eee;--sub:#aaa;--line:#384050;--btn:#e8eaf0;--btnink:#15171c;--soft:#2a303b;--rt:#ff9a7a}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 16px;background:var(--btn);color:var(--btnink);font-weight:600}
+button.sub{background:var(--soft);color:var(--ink)}
+button:disabled{opacity:.4}
+input,select{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+.scr{display:none;min-height:100%}
+.scr.on{display:flex;flex-direction:column}
+.pad{padding:16px;max-width:560px;width:100%;margin:0 auto}
+h1{font-size:22px;margin:8px 0 4px}
+h2{font-size:17px;margin:20px 0 8px}
+.note{color:var(--sub);font-size:14px;line-height:1.6}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.big{display:block;width:100%;font-size:19px;padding:18px;margin:10px 0;text-align:left}
+.big small{display:block;font-weight:400;font-size:13px;opacity:.75;margin-top:4px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.warn{background:#fff3cd;color:#5a4300;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.6}
+.books{display:flex;flex-direction:column;gap:8px}
+.book{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--ink);text-align:left;font-weight:400}
+.book img,.book .noimg{width:44px;height:60px;object-fit:cover;border-radius:4px;background:var(--soft);flex:none;display:flex;align-items:center;justify-content:center}
+.book b{display:block}
+.book span{font-size:13px;color:var(--sub)}
+/* カメラ */
+#cam{background:#000;color:#fff;position:fixed;inset:0}
+#cam.on{display:block}
+#video,#still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#still{display:none}
+#frame{position:absolute;border:3px solid #ff2a2a;border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);pointer-events:none}
+.camtop{position:absolute;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;padding:10px;padding-top:max(10px,env(safe-area-inset-top))}
+.camtop .ttl{flex:1;font-size:14px;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cambtn{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.35);padding:10px 12px;font-size:15px}
+.cambtn.on{background:#ffd54a;color:#000}
+.cambot{position:absolute;left:0;right:0;bottom:0;padding:12px;padding-bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;align-items:center}
+.sizes{display:flex;gap:6px}
+.sizes button{padding:8px 12px;font-size:14px}
+.shrow{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px}
+.shrow>*{width:90px}
+#shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);background-clip:padding-box;padding:0}
+#camhint{font-size:13px;text-shadow:0 1px 3px #000;text-align:center}
+#camerr{position:absolute;top:35%;left:16px;right:16px;text-align:center;line-height:1.7;display:none}
+/* 結果 */
+#res{position:fixed;inset:0}
+#res.on{display:flex}
+.reshead{display:flex;gap:8px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--card)}
+.reshead .ttl{flex:1;font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reshead button{padding:8px 12px;font-size:14px}
+.resbody{flex:1;display:flex;flex-direction:column;min-height:0}
+#textbox{flex:3;min-height:0;overflow:auto;padding:18px;touch-action:none;user-select:none;-webkit-user-select:none;position:relative}
+#text{font-size:22px;line-height:2.1;font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif}
+#textbox.v{writing-mode:vertical-rl}
+#text.v{line-height:2.2}
+#text ruby{ruby-position:over}
+#text rt{font-size:.5em;color:var(--rt);font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
+#text rt.hide{visibility:hidden}
+#text .w{border-radius:4px}
+#text .w.sel{background:rgba(255,213,74,.45)}
+#text .w.tr{background:rgba(100,160,255,.35)}
+#text .name rt{color:#2a6fd6}
+#tracecv{position:absolute;inset:0;pointer-events:none}
+#panel{flex:1;min-height:110px;overflow:auto;border-top:2px solid var(--line);background:var(--card);padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+@media (orientation:landscape) and (max-height:600px){
+  .resbody{flex-direction:row}
+  #panel{flex:none;width:36%;border-top:0;border-left:2px solid var(--line)}
+}
+#panel .pw{font-size:26px;font-weight:700;font-family:"Hiragino Mincho ProN","Noto Serif JP",serif}
+#panel .pr{font-size:18px;color:var(--rt);margin-left:8px}
+#panel .pp{margin:6px 0;font-size:16px}
+#panel .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);margin-right:4px}
+#photo{display:none;position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:5;align-items:center;justify-content:center}
+#photo img{max-width:96%;max-height:90%}
+#busy{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:20;font-size:18px}
+.spin{width:42px;height:42px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#toast{position:fixed;left:50%;bottom:24%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:30;max-width:90%;text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- ===== はじめの画面 ===== -->
+<section id="home" class="scr on"><div class="pad">
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作1</span></h1>
+  <p class="note">読めない漢字をカメラで写すと、ふりがなを付けます。</p>
+  <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
+  <button class="big" id="goRead">📖 読書モード<small>本の名前を入れてから読みます。読みの正しさが上がります</small></button>
+  <button class="big" id="goDaily">📷 ふだん使い<small>看板・書類・手紙など</small></button>
+  <div class="row" style="margin-top:6px">
+    <button class="sub" id="goDemo">見本で試す</button>
+    <button class="sub" id="goSet">⚙ 設定</button>
+  </div>
+</div></section>
+
+<!-- ===== 本を選ぶ画面 ===== -->
+<section id="bookscr" class="scr"><div class="pad">
+  <div class="row" style="justify-content:flex-start"><button class="sub" style="flex:none" data-back>← もどる</button></div>
+  <h1>どの本を読みますか</h1>
+  <div id="recentWrap">
+    <h2>最近読んでいる本</h2>
+    <div class="books" id="recent"></div>
+  </div>
+  <h2>新しい本</h2>
+  <div class="row">
+    <button class="sub" id="bkType">⌨ 文字で入れる</button>
+    <button class="sub" id="bkShot">📷 表紙を撮る</button>
+  </div>
+  <input type="file" id="coverFile" accept="image/*" capture="environment" hidden>
+  <div class="card" id="bkForm" style="display:none">
+    <img id="bkThumb" style="display:none;width:60px;border-radius:4px;margin-bottom:8px">
+    <label class="note">本の名前（タイトル）</label>
+    <input id="bkTitle" placeholder="例：吾輩は猫である">
+    <label class="note" style="display:block;margin-top:10px">書いた人（分からなければ空でよい）</label>
+    <input id="bkAuthor" placeholder="例：夏目漱石">
+    <button style="width:100%;margin-top:12px" id="bkOk">この本で読む</button>
+  </div>
+</div></section>
+
+<!-- ===== 設定 ===== -->
+<section id="set" class="scr"><div class="pad">
+  <div class="row" style="justify-content:flex-start"><button class="sub" style="flex:none" data-back>← もどる</button></div>
+  <h1>⚙ 設定</h1>
+  <h2>Geminiの鍵</h2>
+  <p class="note">Google AI Studio で作った鍵を貼り付けてください。鍵はこのスマホの中だけに保存され、写真は直接Googleに送られます。</p>
+  <input id="keyIn" type="password" autocomplete="off" placeholder="AIza…">
+  <div class="row" style="margin-top:8px"><button id="keySave">保存</button><button class="sub" id="keyDel">消す</button></div>
+  <h2>やさしい漢字のふりがな</h2>
+  <select id="lvSel">
+    <option value="0">ぜんぶの漢字に付ける</option>
+    <option value="2">小学1・2年の漢字には付けない</option>
+    <option value="4">小学4年までの漢字には付けない</option>
+    <option value="6">小学校の漢字には付けない</option>
+  </select>
+  <p class="note">付けなかった漢字が読めないときは、結果の画面でその上を指でなぞるとふりがなが出ます。なぞった言葉は覚えて、次から最初から付けます。人の名前・地名には、いつも付けます。</p>
+  <h2>なぞって覚えた言葉</h2>
+  <p class="note" id="memoCount"></p>
+  <button class="sub" id="memoClear">覚えた言葉を消す</button>
+</div></section>
+
+<!-- ===== カメラ ===== -->
+<section id="cam" class="scr">
+  <video id="video" playsinline muted autoplay></video>
+  <img id="still" alt="">
+  <div id="frame"></div>
+  <div class="camtop">
+    <button class="cambtn" data-back>←</button>
+    <div class="ttl" id="camTtl"></div>
+    <button class="cambtn" id="torch" style="display:none">🔦 ライト</button>
+  </div>
+  <div id="camerr"></div>
+  <div class="cambot">
+    <div id="camhint">読みたい所を赤い枠に入れて、白い丸を押してください</div>
+    <div class="sizes">
+      <button class="cambtn" data-size="s">小さい枠</button>
+      <button class="cambtn" data-size="m">中くらい</button>
+      <button class="cambtn" data-size="l">ページ</button>
+    </div>
+    <div class="shrow">
+      <button class="cambtn" id="pickPhoto">🖼 写真</button>
+      <button id="shutter" aria-label="撮る"></button>
+      <span></span>
+    </div>
+  </div>
+  <input type="file" id="photoFile" accept="image/*" hidden>
+</section>
+
+<!-- ===== 結果 ===== -->
+<section id="res" class="scr" style="flex-direction:column;background:var(--bg)">
+  <div class="reshead">
+    <button class="sub" data-back>📷 もどる</button>
+    <div class="ttl" id="resTtl"></div>
+    <button class="sub" id="showPhoto">写真</button>
+  </div>
+  <div class="resbody">
+    <div id="textbox"><div id="text"></div><canvas id="tracecv"></canvas></div>
+    <div id="panel"></div>
+  </div>
+  <div id="photo"><img id="photoImg" alt="撮った写真"></div>
+</section>
+
+<div id="busy"><div class="spin"></div><div id="busyMsg">読み取り中…</div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("yomi-" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("yomi-" + k, JSON.stringify(v)); } catch (e) {} }
+};
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const hasKanji = s => /[㐀-鿿豈-﫿々〆ヶ]/.test(s || "");
+function toast(msg, ms) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = "none", ms || 2600); }
+function busy(on, msg) { $("busy").style.display = on ? "flex" : "none"; if (msg) $("busyMsg").textContent = msg; }
+
+// ===== 状態 =====
+const S = { mode: "daily", book: null, data: null, demo: false, sel: -1 };
+
+// ===== 画面の切り替え（スマホの戻るボタンにも対応） =====
+const stack = ["home"];
+function show(id, push) {
+  document.querySelectorAll(".scr").forEach(e => e.classList.toggle("on", e.id === id));
+  if (push !== false) { stack.push(id); history.pushState({ d: stack.length }, ""); }
+  if (id === "cam") startCam(); else if (id !== "res") stopCam();
+  if (id === "home") refreshHome();
+  if (id === "set") refreshSet();
+  if (id === "bookscr") refreshBooks();
+}
+function back() { if (stack.length > 1) history.back(); }
+addEventListener("popstate", () => {
+  if ($("photo").style.display === "flex") { $("photo").style.display = "none"; history.pushState({}, ""); return; }
+  if (stack.length > 1) { stack.pop(); show(stack[stack.length - 1], false); }
+});
+history.replaceState({ d: 1 }, "");
+document.querySelectorAll("[data-back]").forEach(b => b.onclick = back);
+
+// ===== はじめの画面 =====
+function refreshHome() { $("nokey").style.display = GEM.get() ? "none" : "block"; }
+$("goRead").onclick = () => { S.mode = "read"; S.demo = false; show("bookscr"); };
+$("goDaily").onclick = () => { S.mode = "daily"; S.book = null; S.demo = false; show("cam"); };
+$("goSet").onclick = () => show("set");
+$("goDemo").onclick = () => {
+  S.demo = true; S.mode = "read"; S.book = { title: "見本の文章", author: "" };
+  S.data = DEMO; S.photo = null; renderResult(); show("res");
+};
+
+// ===== 本を選ぶ =====
+function books() { return store.get("books", []); }
+function refreshBooks() {
+  const list = books();
+  $("recentWrap").style.display = list.length ? "block" : "none";
+  $("recent").innerHTML = list.map((b, i) => `<button class="book" data-i="${i}">${b.thumb ? `<img src="${b.thumb}" alt="">` : `<span class="noimg">📖</span>`}<div><b>${esc(b.title)}</b><span>${esc(b.author || "")}</span></div></button>`).join("");
+  $("recent").querySelectorAll(".book").forEach(el => el.onclick = () => useBook(books()[+el.dataset.i]));
+  $("bkForm").style.display = "none";
+}
+function useBook(b) {
+  const list = books().filter(x => x.title !== b.title);
+  list.unshift(b); store.set("books", list.slice(0, 12));
+  S.book = b; show("cam");
+}
+$("bkType").onclick = () => { $("bkThumb").style.display = "none"; $("bkThumb").src = ""; $("bkTitle").value = ""; $("bkAuthor").value = ""; $("bkForm").style.display = "block"; $("bkTitle").focus(); };
+$("bkShot").onclick = () => { if (!GEM.get()) return toast("表紙を読むには、⚙ 設定でGeminiの鍵を入れてください"); $("coverFile").click(); };
+$("coverFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    busy(true, "表紙を読んでいます…");
+    const img = await loadImg(URL.createObjectURL(f));
+    const big = shrink(img, 1024, 0.85), thumb = shrink(img, 120, 0.7);
+    const out = await askJSON([{ text: "これは本の表紙の写真です。本の名前（タイトル）と書いた人（著者）を読み取って、JSONだけを返してください。形：{\"title\":\"…\",\"author\":\"…\"}。読み取れないものは空の文字にしてください。" }, imgPart(big)]);
+    $("bkTitle").value = out.title || ""; $("bkAuthor").value = out.author || "";
+    $("bkThumb").src = thumb; $("bkThumb").style.display = "block";
+    $("bkForm").style.display = "block";
+    toast("読み取った名前を確かめて、違っていたら直してください", 3500);
+  } catch (err) { toast(errMsg(err), 4000); }
+  finally { busy(false); }
+};
+$("bkOk").onclick = () => {
+  const title = $("bkTitle").value.trim();
+  if (!title) return toast("本の名前を入れてください");
+  useBook({ title, author: $("bkAuthor").value.trim(), thumb: $("bkThumb").style.display === "block" ? $("bkThumb").src : "" });
+};
+
+// ===== 設定 =====
+function refreshSet() {
+  $("keyIn").value = GEM.get(); $("lvSel").value = String(store.get("lv", 2));
+  $("memoCount").textContent = `今、${Object.keys(store.get("memo", {})).length} 個の言葉を覚えています。`;
+}
+$("keySave").onclick = () => { const k = $("keyIn").value.trim(); if (!k) return toast("鍵を貼り付けてください"); GEM.set(k); toast("保存しました"); };
+$("keyDel").onclick = () => { GEM.set(""); $("keyIn").value = ""; toast("鍵を消しました"); };
+$("lvSel").onchange = () => store.set("lv", +$("lvSel").value);
+$("memoClear").onclick = () => { if (confirm("なぞって覚えた言葉をすべて消しますか？")) { store.set("memo", {}); refreshSet(); } };
+
+// ===== カメラ =====
+let stream = null, track = null;
+const SIZES = { s: [0.86, 0.16], m: [0.9, 0.34], l: [0.94, 0.62] };
+function placeFrame() {
+  const sz = store.get("size", "m"), [w, h] = SIZES[sz] || SIZES.m;
+  const W = innerWidth, H = innerHeight, fw = W * w, fh = Math.min(H * h, H - 260);
+  Object.assign($("frame").style, { left: (W - fw) / 2 + "px", top: Math.max(64, (H - fh) / 2 - 40) + "px", width: fw + "px", height: fh + "px" });
+  document.querySelectorAll("[data-size]").forEach(b => b.classList.toggle("on", b.dataset.size === sz));
+}
+document.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { store.set("size", b.dataset.size); placeFrame(); });
+addEventListener("resize", () => { if ($("cam").classList.contains("on")) placeFrame(); });
+async function startCam() {
+  placeFrame();
+  $("camTtl").textContent = S.book ? "📖 " + S.book.title : "📷 ふだん使い";
+  $("camerr").style.display = "none";
+  if (stream) return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    $("video").srcObject = stream; track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    $("torch").style.display = caps.torch ? "block" : "none";
+    if (caps.torch && store.get("torch", false)) setTorch(true);
+  } catch (e) {
+    stream = null;
+    $("camerr").innerHTML = "カメラを使えませんでした。<br>ブラウザでカメラを「許可」するか、<br>下の「🖼 写真」から選んでください。";
+    $("camerr").style.display = "block";
+  }
+}
+function stopCam() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; track = null; } }
+async function setTorch(on) {
+  try { await track.applyConstraints({ advanced: [{ torch: on }] }); $("torch").classList.toggle("on", on); store.set("torch", on); }
+  catch (e) { toast("ライトを付けられませんでした"); }
+}
+$("torch").onclick = () => { if (!store.get("torch_tip")) { store.set("torch_tip", 1); toast("つやのある紙は光が反射します。少し斜めから撮ると読みやすくなります", 4000); } setTorch(!$("torch").classList.contains("on")); };
+
+// 枠の中だけを切り取る（画面の見え方 object-fit:cover に合わせて計算）
+function cropFrame(src, sw, sh) {
+  const W = innerWidth, H = innerHeight, sc = Math.max(W / sw, H / sh);
+  const ox = (W - sw * sc) / 2, oy = (H - sh * sc) / 2, r = $("frame").getBoundingClientRect();
+  let x = (r.left - ox) / sc, y = (r.top - oy) / sc, w = r.width / sc, h = r.height / sc;
+  x = Math.max(0, x); y = Math.max(0, y); w = Math.min(sw - x, w); h = Math.min(sh - y, h);
+  const k = Math.min(1, 1600 / Math.max(w, h)), cv = document.createElement("canvas");
+  cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  cv.getContext("2d").drawImage(src, x, y, w, h, 0, 0, cv.width, cv.height);
+  return cv;
+}
+// 明るさ・くっきりさを自動で整える（暗い所と明るい所を広げる）
+function enhance(cv) {
+  const ctx = cv.getContext("2d"), d = ctx.getImageData(0, 0, cv.width, cv.height), p = d.data, hist = new Uint32Array(256);
+  for (let i = 0; i < p.length; i += 4) hist[(p[i] * 77 + p[i + 1] * 150 + p[i + 2] * 29) >> 8]++;
+  const n = p.length / 4; let acc = 0, lo = 0, hi = 255;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > n * 0.01) { lo = v; break; } }
+  acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > n * 0.01) { hi = v; break; } }
+  if (hi - lo < 40 || (lo < 8 && hi > 247)) return cv;
+  const lut = new Uint8ClampedArray(256); for (let v = 0; v < 256; v++) lut[v] = (v - lo) * 255 / (hi - lo);
+  for (let i = 0; i < p.length; i += 4) { p[i] = lut[p[i]]; p[i + 1] = lut[p[i + 1]]; p[i + 2] = lut[p[i + 2]]; }
+  ctx.putImageData(d, 0, 0); return cv;
+}
+$("shutter").onclick = () => {
+  const v = $("video");
+  if (!stream || !v.videoWidth) return toast("カメラが使えません。「🖼 写真」から選んでください");
+  const cv = enhance(cropFrame(v, v.videoWidth, v.videoHeight));
+  $("still").src = cv.toDataURL("image/jpeg", 0.9); $("still").style.display = "block";
+  readImage(cv).finally(() => $("still").style.display = "none");
+};
+$("pickPhoto").onclick = () => $("photoFile").click();
+$("photoFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  const img = await loadImg(URL.createObjectURL(f));
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement("canvas");
+  cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  readImage(enhance(cv));
+};
+function loadImg(url) { return new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = url; }); }
+function shrink(img, max, q) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(1, max / Math.max(w, h)), cv = document.createElement("canvas");
+  cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  return cv.toDataURL("image/jpeg", q);
+}
+const imgPart = dataUrl => ({ inline_data: { mime_type: "image/jpeg", data: dataUrl.split(",")[1] } });
+
+// ===== AIに読んでもらう =====
+function prompt() {
+  const b = S.mode === "read" && S.book ? `この文章は本「${S.book.title}」${S.book.author ? `（${S.book.author}）` : ""}の一部です。この本の分野・時代・登場人物を考えて、読み方を決めてください。登場人物の名前は、この本の中での読み方にしてください。\n` : "";
+  return `あなたは日本語の読み仮名の専門家です。画像は、本・看板・書類などの一部を写したものです。
+画像の中の日本語の文章を、そのまま正確に書き起こし、言葉ごとに区切って、漢字を含む言葉に読み仮名を付けてください。
+${b}画像の端で切れている文字は書き起こさないでください。文脈から自然な読み方を選んでください（例：「今日」はきょう、「一日」は文脈でついたち/いちにち）。
+
+次の形のJSONだけを返してください。
+{"vertical": 縦書きなら true、横書きなら false,
+ "lines": [ [言葉, 言葉, …], … ]}
+lines は画像の1行ごと（縦書きなら右の行から順、横書きなら上の行から順）。行の中の言葉を順に並べ、つなげると元の行と同じ文字になるようにしてください。
+
+言葉の形：
+- 漢字を含む言葉：{"t":"表記","r":"言葉全体のひらがなの読み","lv":学年,"parts":[{"k":"漢字","r":"その漢字の読み","base":"もとの読み"}],"name":true,"alt":["ほかの読み方"],"m":"やさしい意味"}
+- 漢字を含まない部分（ひらがな・カタカナ・記号など）：{"t":"表記"}
+
+決まり：
+- 言葉は、送り仮名を含めた単語のまとまりにする（例：「静かに」「頷いた」）。助詞は分ける。
+- parts は表記の中の漢字を順に、1字ずつ（熟字訓「今日」「大人」などは、まとめて1つ）。送り仮名は含めない。
+- base は、連濁などで読みが変わったときだけ、もとの読みを入れる（例：「空」が「ぞら」なら base は「そら」）。変わらないときは書かない。
+- lv は、その言葉の中でいちばん難しい漢字を習う学年。小学1〜6年は 1〜6、中学で習う常用漢字は 7、常用漢字にない字は 8。
+- name は、人の名前・地名・店や会社の名前のときだけ true。
+- alt は、人名・地名などで読み方が何通りもあるときだけ、よくある順に入れる（r と同じものは入れない）。
+- m は、小学生には難しい言葉のときだけ、20文字くらいのやさしい意味。この文の中での意味にする。
+- 文字が読み取れないときは {"vertical":false,"lines":[]} を返す。`;
+}
+async function readImage(cv) {
+  if (!GEM.get()) { toast("⚙ 設定でGeminiの鍵を入れてください（「見本で試す」なら鍵なしで動きます）", 4000); return; }
+  const url = cv.toDataURL("image/jpeg", 0.9);
+  busy(true, "読み取り中…");
+  try {
+    const out = await askJSON([{ text: prompt() }, imgPart(url)]);
+    if (!out || !Array.isArray(out.lines) || !out.lines.length) { toast("文字が見つかりませんでした。枠の中に文字を入れて撮り直してください", 3500); return; }
+    S.data = out; S.photo = url; renderResult(); show("res");
+  } catch (err) { toast(errMsg(err), 4500); }
+  finally { busy(false); }
+}
+async function askJSON(parts) {
+  const body = { contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } } };
+  const text = await geminiCall(body);
+  try { return JSON.parse(text.replace(/^[^{[]*/, "").replace(/[^}\]]*$/, "")); } catch (e) { throw { code: "invalid_json" }; }
+}
+
+// ===== 結果の表示 =====
+function rubyHTML(w, show) {
+  const cls = show ? "" : ' class="hide"';
+  if (!hasKanji(w.t) || !w.r) return esc(w.t);
+  const parts = Array.isArray(w.parts) ? w.parts.filter(p => p && p.k && p.r) : [];
+  let out = "", i = 0, pi = 0;
+  while (i < w.t.length) {
+    const p = parts[pi];
+    if (p && w.t.startsWith(p.k, i)) { out += `<ruby>${esc(p.k)}<rt${cls}>${esc(p.r)}</rt></ruby>`; i += p.k.length; pi++; }
+    else { out += esc(w.t[i]); i++; }
+  }
+  if (pi !== parts.length || !parts.length) return `<ruby>${esc(w.t)}<rt${cls}>${esc(w.r)}</rt></ruby>`; // parts が合わないときは言葉全体に付ける
+  return out;
+}
+function rubyOn(w) {
+  if (!hasKanji(w.t)) return false;
+  if (w.name) return true;
+  const m = store.get("memo", {})[w.t];
+  if (m === 1) return true; if (m === 0) return false;
+  return (+w.lv || 8) > store.get("lv", 2);
+}
+function renderResult() {
+  const d = S.data; S.words = []; S.sel = -1;
+  $("resTtl").textContent = S.demo ? "見本（鍵なしの動作確認）" : S.book && S.mode === "read" ? "📖 " + S.book.title : "📷 ふだん使い";
+  $("showPhoto").style.display = S.photo ? "" : "none";
+  $("text").className = $("textbox").className = d.vertical ? "v" : "";
+  $("text").innerHTML = d.lines.map(line => (line || []).map(w => {
+    const i = S.words.push(w) - 1;
+    if (!hasKanji(w.t)) return `<span class="w" data-i="${i}">${esc(w.t)}</span>`;
+    return `<span class="w${w.name ? " name" : ""}" data-i="${i}">${rubyHTML(w, rubyOn(w))}</span>`;
+  }).join("")).join("<br>");
+  fitText();
+  setPanel(-1);
+}
+function fitText() {
+  const box = $("textbox"), t = $("text"); let fs = 24;
+  t.style.fontSize = fs + "px";
+  requestAnimationFrame(() => {
+    while (fs > 15 && (box.scrollHeight > box.clientHeight + 2 || box.scrollWidth > box.clientWidth + 2)) { fs -= 1; t.style.fontSize = fs + "px"; }
+  });
+}
+addEventListener("resize", () => { if ($("res").classList.contains("on")) fitText(); });
+const LV = { 1: "小1", 2: "小2", 3: "小3", 4: "小4", 5: "小5", 6: "小6", 7: "中学", 8: "常用外" };
+function setPanel(i) {
+  document.querySelectorAll("#text .w.sel").forEach(e => e.classList.remove("sel"));
+  const w = S.words[i];
+  if (!w || !hasKanji(w.t)) {
+    $("panel").innerHTML = `<div class="note">言葉を<b>タップ</b>すると、ここに読み方が出ます。<br>ふりがなのない漢字が読めないときは、その上を<b>指でなぞって</b>ください。もう一度なぞると消えます。</div>`;
+    return;
+  }
+  document.querySelector(`#text .w[data-i="${i}"]`)?.classList.add("sel");
+  const parts = (w.parts || []).filter(p => p && p.k && p.r);
+  const brk = parts.map(p => `${esc(p.k)}：${p.base && p.base !== p.r ? `${esc(p.base)}→<b>${esc(p.r)}</b>` : esc(p.r)}`).join("／");
+  $("panel").innerHTML =
+    `<div><span class="pw">${esc(w.t)}</span><span class="pr">${esc(w.r)}</span></div>` +
+    (brk ? `<div class="pp">${brk}</div>` : "") +
+    (w.alt && w.alt.length ? `<div class="pp">ほかの読み方：${w.alt.map(esc).join("、")}</div>` : "") +
+    (w.m ? `<div class="pp">意味：${esc(w.m)}</div>` : "") +
+    `<div style="margin-top:6px">${w.lv ? `<span class="tag">${LV[w.lv] || ""}の漢字</span>` : ""}${w.name ? `<span class="tag">名前</span>` : ""}</div>` +
+    (w.name ? `<div class="note" style="font-size:12px;margin-top:6px">名前の読みは推測です。ご本人や本の中の説明で確かめてください。</div>` : "");
+}
+$("showPhoto").onclick = () => { $("photoImg").src = S.photo; $("photo").style.display = "flex"; history.pushState({}, ""); };
+$("photo").onclick = () => history.back();
+
+// ===== タップ と なぞる =====
+(() => {
+  const box = $("textbox"), cv = $("tracecv"); let pts = null, hit = null, startT = 0;
+  const wordAt = (x, y) => { const e = document.elementFromPoint(x, y); const w = e && e.closest && e.closest("#text .w"); return w ? +w.dataset.i : -1; };
+  box.addEventListener("pointerdown", e => {
+    pts = [[e.clientX, e.clientY]]; hit = new Set(); startT = Date.now();
+    const i = wordAt(e.clientX, e.clientY); if (i >= 0) hit.add(i);
+    const r = box.getBoundingClientRect(); cv.width = r.width; cv.height = r.height;
+    cv.style.top = box.scrollTop + "px"; cv.style.left = box.scrollLeft + "px";
+    box.setPointerCapture(e.pointerId);
+  });
+  box.addEventListener("pointermove", e => {
+    if (!pts) return; pts.push([e.clientX, e.clientY]);
+    const i = wordAt(e.clientX, e.clientY);
+    if (i >= 0 && !hit.has(i)) { hit.add(i); document.querySelector(`#text .w[data-i="${i}"]`)?.classList.add("tr"); }
+    const r = box.getBoundingClientRect(), c = cv.getContext("2d");
+    c.clearRect(0, 0, cv.width, cv.height); c.strokeStyle = "rgba(60,130,255,.6)"; c.lineWidth = 10; c.lineCap = c.lineJoin = "round";
+    c.beginPath(); pts.forEach(([x, y], k) => c[k ? "lineTo" : "moveTo"](x - r.left, y - r.top)); c.stroke();
+  });
+  const end = () => {
+    if (!pts) return;
+    const dist = pts.length > 1 ? Math.hypot(pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1]) + pts.length : 0;
+    cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+    document.querySelectorAll("#text .w.tr").forEach(e => e.classList.remove("tr"));
+    const ids = [...hit].filter(i => hasKanji(S.words[i].t)); const p0 = pts; pts = null;
+    if (dist < 14) { const i = wordAt(p0[0][0], p0[0][1]); setPanel(i); return; } // ちょんと触れた → タップ
+    if (!ids.length) return;
+    const memo = store.get("memo", {});
+    const anyHidden = ids.some(i => !rubyOn(S.words[i]));
+    ids.forEach(i => {
+      const w = S.words[i]; if (w.name) return;
+      memo[w.t] = anyHidden ? 1 : 0;
+      document.querySelectorAll(`#text .w[data-i="${i}"] rt`).forEach(rt => rt.classList.toggle("hide", !anyHidden));
+    });
+    store.set("memo", memo);
+    setPanel(ids[ids.length - 1]);
+    toast(anyHidden ? "ふりがなを付けました。次からも付けます" : "ふりがなを消しました");
+  };
+  box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
+})();
+
+// ===== Gemini（使う人の鍵で、端末から直接Googleに送る。運営者には何も届かない）  ※AI家計簿と同じしくみ =====
+const ERR = {
+  no_key: "⚙ 設定でGeminiの鍵を入れてください。",
+  bad_key: "Geminiの鍵が正しくないようです。⚙ 設定で入れ直してください。",
+  key_denied: "この鍵ではGeminiを使えませんでした。鍵を作り直してお試しください。",
+  offline: "インターネットにつながっていないようです。",
+  slow: "AIの返事が遅いため、止めました。もう一度お試しください。",
+  busy: "AIが混み合っています。少し待ってからお試しください。",
+  model: "AIのしくみが変わったようです。アプリの更新をお待ちください。",
+  rate_limited: "今日の無料の回数を使い切ったか、AIが混み合っています。少し待つか、明日もう一度お試しください。",
+  image_rejected: "この画像は読み込めませんでした。別の写真でお試しください。",
+  invalid_json: "うまく読み取れませんでした。もう一度お試しください。",
+  refused: "この画像は読み取れませんでした。別の画像でお試しください。"
+};
+const errMsg = e => ERR[e && e.code] || "うまく読み取れませんでした。明るい所で、文字が枠に収まるように撮り直してください。";
+const GEM = {
+  KEY: "yomi-gemini-key",
+  MODELS: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"],
+  dead: {},
+  get() { try { return localStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
+  set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); } catch (e) {} }
+};
+async function geminiOnce(m, key, body) {
+  const ctl = new AbortController(), guard = setTimeout(() => ctl.abort(), 60000);
+  try {
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+        method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body)
+      });
+    } catch (e) { return { err: ctl.signal.aborted ? { code: "slow" } : { code: "offline" } }; }
+    if (!res.ok) return { status: res.status, errText: await res.text().catch(() => "") };
+    const d = await res.json().catch(() => null), c = d && d.candidates && d.candidates[0];
+    const text = c && c.content && (c.content.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join("");
+    return text ? { text } : { err: { code: "refused" } };
+  } finally { clearTimeout(guard); }
+}
+async function geminiCall(body) {
+  const key = GEM.get(); if (!key) throw { code: "no_key" };
+  let last = null;
+  for (const m of GEM.MODELS.filter((x, i, l) => !GEM.dead[x] || l.every(y => GEM.dead[y]))) {
+    let r = await geminiOnce(m, key, body);
+    if (r.status === 400 && body.generationConfig.thinkingConfig && !/API_KEY_INVALID|API key not valid/i.test(r.errText || "")) {
+      const b2 = JSON.parse(JSON.stringify(body)); delete b2.generationConfig.thinkingConfig; r = await geminiOnce(m, key, b2);
+    }
+    if (r.text) return r.text;
+    if (r.err) { if (r.err.code === "slow") { last = r.err; continue; } throw r.err; }
+    const t = r.errText || "";
+    if (r.status === 404) { GEM.dead[m] = 1; last = { code: "model" }; continue; }
+    if (r.status === 429) { last = { code: "rate_limited" }; continue; }
+    if (r.status === 503 || r.status === 500) { last = { code: "busy" }; continue; }
+    if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(t)) throw { code: "bad_key" };
+    if (r.status === 401 || r.status === 403) throw { code: "key_denied" };
+    if (r.status === 400) throw { code: "image_rejected" };
+    last = { code: "busy" };
+  }
+  throw last || { code: "busy" };
+}
+
+// ===== 見本（鍵なしで動きを確かめる用。Claudeが書いた短い文） =====
+const DEMO = { vertical: true, lines: [
+  [{ t: "青空", r: "あおぞら", lv: 1, parts: [{ k: "青", r: "あお" }, { k: "空", r: "ぞら", base: "そら" }] }, { t: "の" }, { t: "下", r: "した", lv: 1, parts: [{ k: "下", r: "した" }] }, { t: "、" },
+   { t: "一", r: "はじめ", lv: 1, name: true, alt: ["かず", "いち"], parts: [{ k: "一", r: "はじめ" }] }, { t: "は" }, { t: "静かに", r: "しずかに", lv: 4, parts: [{ k: "静", r: "しず" }] }, { t: "頷いた", r: "うなずいた", lv: 8, parts: [{ k: "頷", r: "うなず" }], m: "首をたてにふって「はい」と示した" }, { t: "。" }],
+  [{ t: "今日", r: "きょう", lv: 2, parts: [{ k: "今日", r: "きょう" }] }, { t: "は" }, { t: "朝", r: "あさ", lv: 2, parts: [{ k: "朝", r: "あさ" }] }, { t: "から" }, { t: "仮想", r: "かそう", lv: 5, parts: [{ k: "仮", r: "か" }, { k: "想", r: "そう" }], m: "本当はないものを、あるとして考えること" }, { t: "マシン" }, { t: "を" },
+   { t: "起動", r: "きどう", lv: 4, parts: [{ k: "起", r: "き" }, { k: "動", r: "どう" }], m: "機械やプログラムを動かし始めること" }, { t: "し" }, { t: "続けて", r: "つづけて", lv: 4, parts: [{ k: "続", r: "つづ" }] }, { t: "いる" }, { t: "。" }],
+  [{ t: "窓", r: "まど", lv: 6, parts: [{ k: "窓", r: "まど" }] }, { t: "の" }, { t: "外", r: "そと", lv: 2, parts: [{ k: "外", r: "そと" }] }, { t: "で" }, { t: "鶯", r: "うぐいす", lv: 8, parts: [{ k: "鶯", r: "うぐいす" }], m: "春に「ホーホケキョ」と鳴く小さな鳥" }, { t: "が" }, { t: "鳴いた", r: "ないた", lv: 2, parts: [{ k: "鳴", r: "な" }] }, { t: "。" }]
+] };
+
+refreshHome();
+</script>
+</body>
+</html>
