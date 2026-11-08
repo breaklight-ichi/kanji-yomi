@@ -2,8 +2,12 @@
 <html lang="ja">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>漢字よみカメラ</title>
+<title>カンミルーペ</title>
 <meta name="theme-color" content="#1d2433">
+<meta name="description" content="読めない漢字にカメラで触れると、ふりがなと意味を出すアプリ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#666;--line:#ddd;--btn:#1d2433;--btnink:#fff;--soft:#eef1f6;--rt:#c0260b}
 @media (prefers-color-scheme:dark){:root{--bg:#15171c;--card:#1f232b;--ink:#eee;--sub:#aaa;--line:#384050;--btn:#e8eaf0;--btnink:#15171c;--soft:#2a303b;--rt:#ff9a7a}}
@@ -92,7 +96,7 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作11</span></h1>
+  <h1>カンミルーペ <span style="font-size:13px;color:var(--sub)">1.0</span></h1>
   <p class="note">読めない漢字をカメラで写して指で触れると、その漢字のふりがなと説明を出します。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
   <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
@@ -151,6 +155,10 @@ h2{font-size:17px;margin:20px 0 8px}
     <option value="fast">速さ優先（おすすめ）</option>
     <option value="accurate">正しさ優先（少し待ちます）</option>
   </select>
+  <h2>このアプリについて</h2>
+  <p class="note">無料のアプリです。個別のお問い合わせ・ご要望・不具合のご連絡への対応は行っていません。<br>
+  AIの読み方は間違えることがあります。大事な場面では、辞書などで確かめてください。<br>
+  <a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p>
 </div></section>
 
 <!-- ===== カメラ ===== -->
@@ -332,7 +340,7 @@ function enterCam() {
 function setHint() {
   $("camhint").innerHTML = S.frozen
     ? "<b>2本指</b>で広げて拡大し、読めない漢字に<b>指で触れて</b>ください。<br>ふりがなと説明が、画面の端に出ます。"
-    : S.cover ? "表紙の<b>本の名前が大きく写る</b>ようにして、<b>画面のどこかを触って</b>ください"
+    : S.cover ? "表紙全体を写さなくて大丈夫です。<b>タイトルと作者の名前に近づけて</b>、はっきり写ったら<b>画面のどこかを触って</b>ください"
     : "読みたいページを写して、<b>画面のどこかを触る</b>と止まります";
 }
 // スマホの後ろのレンズ（ふつう・広角・望遠など）から、ふだん写真に使う「メインのレンズ」を選ぶ
@@ -864,6 +872,19 @@ async function geminiCall(body, onText, signal) {
 }
 
 refreshHome();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// ストアに載せる画面写真を撮るための仕掛け（アドレスの最後に #shot2 などを付けたときだけ動く。ふだんは何もしない）
+if (/^#shot[2-4]$/.test(location.hash)) (async () => {
+  const n = location.hash.slice(5), w = ms => new Promise(r => setTimeout(r, ms));
+  history.replaceState({}, "", location.pathname);
+  $("goDemo").click(); await w(500);
+  const tap = ch => { const c = demoChars.find(x => x.ch === ch), d = disp(); return [Z.tx + (d.x + c.x / S.shot.width * d.w) * Z.z, Z.ty + (d.y + c.y / S.shot.height * d.h) * Z.z]; };
+  if (n === "4") { const [x, y] = tap("鶯"); setZoom(1.8, x - x * 1.8 + 40, y - y * 1.8 - 120); await w(100); const [a, b] = tap("鶯"); lookUp(a, b); }
+  else { const [x, y] = tap("頷"); lookUp(x, y); }
+  await w(300);
+  if (n === "3") { document.querySelector("#ctx .tgt").click(); document.querySelectorAll("#ctx .ow")[0].click(); }
+})();
 </script>
 </body>
 </html>

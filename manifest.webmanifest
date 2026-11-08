@@ -1,0 +1,19 @@
+{
+  "name": "カンミルーペ",
+  "short_name": "カンミルーペ",
+  "description": "読めない漢字にカメラで触れると、ふりがなと意味を出すアプリ",
+  "lang": "ja",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1d2433",
+  "theme_color": "#1d2433",
+  "categories": ["books", "education", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
