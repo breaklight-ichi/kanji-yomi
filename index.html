@@ -56,15 +56,17 @@ h2{font-size:17px;margin:20px 0 8px}
 #cam.frz .frz-only{display:inline-block}
 
 /* ルーペと説明のカード（画面の端。写真の文字の上には何も重ねない） */
-#lcard{position:absolute;left:8px;right:8px;background:var(--card);color:var(--ink);border-radius:16px;padding:10px 12px;box-shadow:0 4px 24px rgba(0,0,0,.5);display:none;max-height:46%;overflow:auto;z-index:5}
-#lcard .x{position:absolute;right:6px;top:6px;padding:4px 12px;font-size:18px;z-index:2}
+#lcard{position:absolute;left:8px;right:8px;background:var(--card);color:var(--ink);border-radius:16px;padding:10px 12px;box-shadow:0 4px 24px rgba(0,0,0,.5);display:none;max-height:60%;overflow:hidden;z-index:5;touch-action:none}
+#lcard .left{display:flex;flex-direction:column;gap:8px;align-items:center;flex:none}
+#lcard .x{padding:6px 0;width:104px;font-size:15px}
 #lcard .top{display:flex;gap:12px;align-items:stretch}
 #loupe{width:104px;height:104px;align-self:center;border-radius:12px;flex:none;background:#000;border:2px solid var(--line)}
-#ctx{flex:1;min-width:0;display:flex;background:var(--soft);border-radius:12px;padding:8px;overflow:auto;height:220px;max-height:38vh;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
-#ctx>*{margin:auto}
+#ctx{flex:1;min-width:0;position:relative;background:var(--soft);border-radius:12px;padding:8px;overflow:hidden;height:220px;max-height:38vh;touch-action:none}
+#ctx>.ctx{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+#ctx>.wait{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 #ctx .tgt{cursor:pointer;outline:2px dashed rgba(192,38,11,.5);outline-offset:2px}
 #lcard .hint2{font-size:12px;color:var(--sub);margin-top:6px;text-align:center}
-.ctx{font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif;line-height:1.9;font-weight:600;color:var(--ink);white-space:normal;word-break:break-all}
+.ctx{font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif;line-height:1.9;font-weight:600;color:var(--ink);white-space:nowrap}
 .ctx.v{white-space:normal}
 .ctx.v{writing-mode:vertical-rl}
 .ctx rt{font-size:.5em;color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-weight:700}
@@ -90,7 +92,7 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作8</span></h1>
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作9</span></h1>
   <p class="note">読めない漢字をカメラで写して指で触れると、その漢字のふりがなと説明を出します。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
   <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
@@ -170,9 +172,8 @@ h2{font-size:17px;margin:20px 0 8px}
   </div>
   <div id="camerr"></div>
   <div id="lcard">
-    <button class="sub x" id="lcardX" aria-label="閉じる">×</button>
-    <div class="top"><canvas id="loupe" width="264" height="264"></canvas><div id="ctx"></div></div>
-    <div class="hint2" id="hint2">文は<b>2本指で広げる</b>と大きくなります。ふりがなの付いた言葉に触れると、詳しい説明が出ます。ほかの漢字も、触れるとふりがなが出ます。</div>
+    <div class="top"><div class="left"><canvas id="loupe" width="264" height="264"></canvas><button class="sub x" id="lcardX" aria-label="閉じる">× 閉じる</button></div><div id="ctx"></div></div>
+    <div class="hint2" id="hint2">文は<b>2本指で広げる</b>と大きくなり、<b>指でスライド</b>すると動きます。ふりがなの付いた言葉に触れると、詳しい説明が出ます。ほかの漢字も、触れるとふりがなが出ます。</div>
     <div id="detail"></div>
   </div>
   <div class="cambot" id="cambot">
@@ -610,19 +611,48 @@ let ctxBase = 20;
 function applyCtxZoom() {
   const el = $("ctx").firstChild; if (!el || !el.classList || !el.classList.contains("ctx")) return;
   el.style.fontSize = ctxBase * store.get("ctxz", 1) + "px";
-  if (el.classList.contains("v")) $("ctx").scrollLeft = $("ctx").scrollWidth; // 縦書きは右から読むので、右端を見せる
+  centerTarget();
+}
+// 触った言葉が、文の枠の真ん中に見えるように動かす
+const ctxPos = { x: 0, y: 0 };
+function centerTarget() {
+  const box = $("ctx"), el = box.firstChild, tg = el && el.querySelector && el.querySelector(".tgt"); if (!tg) return;
+  ctxPos.x = 0; ctxPos.y = 0; el.style.transform = "translate(-50%,-50%)";
+  const b = box.getBoundingClientRect(), r = tg.getBoundingClientRect();
+  moveCtx((b.left + b.width / 2) - (r.left + r.width / 2), (b.top + b.height / 2) - (r.top + r.height / 2));
+}
+// 文を動かす（はみ出している分だけ。枠の外へ行き過ぎないように）
+function moveCtx(dx, dy) {
+  const box = $("ctx"), el = box.firstChild; if (!el || !el.style) return;
+  const W = box.clientWidth - 16, H = box.clientHeight - 16, w = el.offsetWidth * 1, h = el.offsetHeight * 1;
+  const mx = Math.max(0, (w - W) / 2 + 8), my = Math.max(0, (h - H) / 2 + 8);
+  ctxPos.x = Math.max(-mx, Math.min(mx, ctxPos.x + dx)); ctxPos.y = Math.max(-my, Math.min(my, ctxPos.y + dy));
+  el.style.transform = `translate(-50%,-50%) translate(${ctxPos.x}px,${ctxPos.y}px)`;
 }
 (() => {
-  const box = $("ctx"); let p0 = null;
+  const card = $("lcard"), box = $("ctx"); let p0 = null, drag = null, dragged = false;
   const dist = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
-  box.addEventListener("touchstart", e => { if (e.touches.length === 2) { p0 = { d: dist(e.touches), z: store.get("ctxz", 1) }; e.preventDefault(); } }, { passive: false });
-  box.addEventListener("touchmove", e => {
+  // 2本指：文の字を大きく・小さく（倍率は覚えておく）
+  card.addEventListener("touchstart", e => { if (e.touches.length === 2) { p0 = { d: dist(e.touches), z: store.get("ctxz", 1) }; drag = null; e.preventDefault(); } }, { passive: false });
+  card.addEventListener("touchmove", e => {
     if (!p0 || e.touches.length !== 2) return; e.preventDefault();
     const z = Math.max(0.6, Math.min(4, p0.z * dist(e.touches) / p0.d));
-    store.set("ctxz", z); const el = box.firstChild; if (el && el.style) el.style.fontSize = ctxBase * z + "px";
+    store.set("ctxz", z); const el = box.firstChild; if (el && el.style) { el.style.fontSize = ctxBase * z + "px"; moveCtx(0, 0); }
   }, { passive: false });
-  box.addEventListener("touchend", e => { if (e.touches.length < 2) p0 = null; });
-  box.addEventListener("wheel", e => { if (!e.ctrlKey) return; e.preventDefault(); store.set("ctxz", Math.max(0.6, Math.min(4, store.get("ctxz", 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1)))); applyCtxZoom(); }, { passive: false });
+  card.addEventListener("touchend", e => { if (e.touches.length < 2) { if (p0) dragged = true; p0 = null; } });
+  // 1本指でスライド：文だけが動く（カードや写真は動かない）
+  card.addEventListener("pointerdown", e => { if (p0 || e.target.closest("button")) return; drag = { x: e.clientX, y: e.clientY, id: e.pointerId }; dragged = false; });
+  card.addEventListener("pointermove", e => {
+    if (!drag || p0 || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!dragged && Math.hypot(dx, dy) < 8) return;
+    dragged = true; drag.x = e.clientX; drag.y = e.clientY; moveCtx(dx, dy);
+  });
+  const up = () => { drag = null; };
+  card.addEventListener("pointerup", up); card.addEventListener("pointercancel", up);
+  // スライドしたあとの指は「触れた」扱いにしない（ふりがなが付いたり消えたりしないように）
+  card.addEventListener("click", e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
+  box.addEventListener("wheel", e => { e.preventDefault(); if (e.ctrlKey) { store.set("ctxz", Math.max(0.6, Math.min(4, store.get("ctxz", 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1)))); applyCtxZoom(); } else moveCtx(-e.deltaX, -e.deltaY); }, { passive: false });
 })();
 
 // 前後の文字と一緒に、言葉にふりがなを付けて書く（縦書きは右、横書きは上。大きさは字の半分）
@@ -650,11 +680,13 @@ function showResult(r) {
   box.querySelectorAll(".ow").forEach(o => o.onclick = () => { const rt = o.querySelector("rt"), on = rt.classList.toggle("hide"); o.classList.toggle("on", !on); });
   // 枠に収まる大きさに
   // 大きさ：まずは枠に収まる大きさ（ただし読める大きさより小さくしない）。そこに、2本指で決めた倍率をかける
-  const el = box.firstChild; box.scrollTop = 0;
-  let fs = 24; // 縦書きも横書きも、枠に合わせて折り返す（縦書きは高さで折り返して列が増える）
-  if (r.v) el.style.height = (box.clientHeight - 16) + "px";
-  el.style.fontSize = fs + "px";
-  for (let i = 0; i < 24 && (el.offsetWidth > box.clientWidth - 12 || el.offsetHeight > box.clientHeight - 12) && fs > 17; i++) { fs *= 0.92; el.style.fontSize = fs + "px"; }
+  const el = box.firstChild;
+  let fs = 24;
+  if (r.v) { // 縦書き：高さで折り返して列が増える（今までどおり）
+    el.style.height = (box.clientHeight - 16) + "px";
+    el.style.fontSize = fs + "px";
+    for (let i = 0; i < 24 && (el.offsetWidth > box.clientWidth - 12 || el.offsetHeight > box.clientHeight - 12) && fs > 17; i++) { fs *= 0.92; el.style.fontSize = fs + "px"; }
+  } // 横書き：1行のまま、字は小さくしない（はみ出した所は、指でスライドして読む）
   ctxBase = Math.max(17, fs); applyCtxZoom();
   el.querySelector(".tgt").onclick = () => { const d = $("detail"); d.style.display = d.style.display === "none" ? "block" : "none"; };
   const fullR = r.full.replace(r.t, r.r);
