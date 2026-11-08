@@ -29,6 +29,9 @@ h2{font-size:17px;margin:20px 0 8px}
 .book img,.book .noimg{width:44px;height:60px;object-fit:cover;border-radius:4px;background:var(--soft);flex:none;display:flex;align-items:center;justify-content:center}
 .book b{display:block}
 .book span{font-size:13px;color:var(--sub)}
+.bookrow{display:flex;gap:6px;align-items:stretch}
+.bookrow .book{flex:1}
+.bookrow .del{flex:none;padding:0 14px;font-size:18px}
 
 /* ===== カメラ（触って止める → 拡大 → 読めない漢字に触れる → 端のルーペにふりがな） ===== */
 #cam{background:#000;color:#fff;position:fixed;inset:0;overflow:hidden;touch-action:none}
@@ -56,8 +59,10 @@ h2{font-size:17px;margin:20px 0 8px}
 #lcard{position:absolute;left:8px;right:8px;background:var(--card);color:var(--ink);border-radius:16px;padding:10px 12px;box-shadow:0 4px 24px rgba(0,0,0,.5);display:none;max-height:46%;overflow:auto;z-index:5}
 #lcard .x{position:absolute;right:6px;top:6px;padding:4px 12px;font-size:18px;z-index:2}
 #lcard .top{display:flex;gap:12px;align-items:stretch}
-#loupe{width:132px;height:132px;align-self:center;border-radius:12px;flex:none;background:#000;border:2px solid var(--line)}
-#ctx{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:12px;padding:6px;overflow:hidden;min-height:180px}
+#loupe{width:104px;height:104px;align-self:center;border-radius:12px;flex:none;background:#000;border:2px solid var(--line)}
+#ctx{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:var(--soft);border-radius:12px;padding:6px;overflow:hidden;min-height:200px}
+#ctx .tgt{cursor:pointer;outline:2px dashed rgba(192,38,11,.5);outline-offset:2px}
+#lcard .hint2{font-size:12px;color:var(--sub);margin-top:6px;text-align:center}
 .ctx{font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif;white-space:nowrap;line-height:1.9;font-weight:600;color:var(--ink)}
 .ctx.v{writing-mode:vertical-rl}
 .ctx rt{font-size:.5em;color:var(--rt);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-weight:700}
@@ -80,7 +85,7 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作5</span></h1>
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作6</span></h1>
   <p class="note">読めない漢字をカメラで写して指で触れると、その漢字のふりがなと説明を出します。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
   <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
@@ -149,6 +154,7 @@ h2{font-size:17px;margin:20px 0 8px}
   <div class="camtop">
     <button class="cambtn" data-back>←</button>
     <div class="ttl" id="camTtl"></div>
+    <button class="cambtn live-only" id="lensBtn" style="display:none">🔄 レンズ</button>
     <button class="cambtn live-only" id="torch" style="display:none">🔦 ライト</button>
     <button class="cambtn" id="zoomReset" style="display:none">🔍 元の大きさ</button>
   </div>
@@ -156,6 +162,7 @@ h2{font-size:17px;margin:20px 0 8px}
   <div id="lcard">
     <button class="sub x" id="lcardX" aria-label="閉じる">×</button>
     <div class="top"><canvas id="loupe" width="264" height="264"></canvas><div id="ctx"></div></div>
+    <div class="hint2" id="hint2">ふりがなの付いた言葉に触れると、詳しい説明が出ます。違う漢字のときは、拡大して漢字の真ん中に触れ直してください。</div>
     <div id="detail"></div>
   </div>
   <div class="cambot" id="cambot">
@@ -220,8 +227,13 @@ function books() { return store.get("books", []); }
 function refreshBooks() {
   const list = books();
   $("recentWrap").style.display = list.length ? "block" : "none";
-  $("recent").innerHTML = list.map((b, i) => `<button class="book" data-i="${i}">${b.thumb ? `<img src="${b.thumb}" alt="">` : `<span class="noimg">📖</span>`}<div><b>${esc(b.title)}</b><span>${esc(b.author || "")}</span></div></button>`).join("");
+  $("recent").innerHTML = list.map((b, i) => `<div class="bookrow"><button class="book" data-i="${i}">${b.thumb ? `<img src="${b.thumb}" alt="">` : `<span class="noimg">📖</span>`}<div><b>${esc(b.title)}</b><span>${esc(b.author || "")}</span></div></button><button class="sub del" data-del="${i}" aria-label="一覧から消す">🗑</button></div>`).join("");
   $("recent").querySelectorAll(".book").forEach(el => el.onclick = () => useBook(books()[+el.dataset.i]));
+  $("recent").querySelectorAll("[data-del]").forEach(el => el.onclick = () => {
+    const list = books(), b = list[+el.dataset.del]; if (!b) return;
+    if (!confirm(`「${b.title}」を一覧から消しますか？（表紙の写真も消えます）`)) return;
+    list.splice(+el.dataset.del, 1); store.set("books", list); refreshBooks(); toast("一覧から消しました");
+  });
   $("bkForm").style.display = "none";
 }
 function useBook(b) {
@@ -280,14 +292,41 @@ function setHint() {
     ? "<b>2本指</b>で広げて拡大し、読めない漢字に<b>指で触れて</b>ください。<br>ふりがなと説明が、画面の端に出ます。"
     : "読みたいページを写して、<b>画面のどこかを触る</b>と止まります";
 }
+// スマホの後ろのレンズ（ふつう・広角・望遠など）から、ふだん写真に使う「メインのレンズ」を選ぶ
+let backCams = [];
+async function listBackCams() {
+  try {
+    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+    const back = ds.filter(d => !/front|前面|user|インカメ/i.test(d.label));
+    // Android では「camera2 0, facing back」がメインのことが多いので、番号の小さい順に並べる
+    const num = d => { const m = d.label.match(/camera2?\s*(\d+)/i); return m ? +m[1] : 99; };
+    backCams = (back.length ? back : ds).slice().sort((x, y) => num(x) - num(y));
+  } catch (e) { backCams = []; }
+}
+async function openCam(deviceId) {
+  const v = { width: { ideal: 2560 }, height: { ideal: 2560 } };
+  if (deviceId) v.deviceId = { exact: deviceId }; else v.facingMode = { ideal: "environment" };
+  return navigator.mediaDevices.getUserMedia({ video: v, audio: false });
+}
 async function startCam() {
   $("camerr").style.display = "none";
   if (stream) return;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
+    const saved = store.get("cam", "");
+    try { stream = await openCam(saved || null); } catch (e) { stream = await openCam(null); }
+    await listBackCams();
+    // 初めてのときは、メインのレンズに切り替える
+    const cur = stream.getVideoTracks()[0].getSettings().deviceId;
+    if (!saved && backCams.length > 1 && backCams[0].deviceId && backCams[0].deviceId !== cur) {
+      stream.getTracks().forEach(t => t.stop());
+      try { stream = await openCam(backCams[0].deviceId); } catch (e) { stream = await openCam(null); }
+    }
     $("video").srcObject = stream; track = stream.getVideoTracks()[0];
     const caps = track.getCapabilities ? track.getCapabilities() : {};
+    // ピント：自動で合わせ続ける
+    if (caps.focusMode && caps.focusMode.includes("continuous")) track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
     $("torch").style.display = caps.torch ? "" : "none";
+    $("lensBtn").style.display = backCams.length > 1 ? "" : "none";
     if (caps.torch && store.get("torch", false)) setTorch(true);
   } catch (e) {
     stream = null;
@@ -295,6 +334,13 @@ async function startCam() {
     $("camerr").style.display = "block";
   }
 }
+// 「🔄 レンズ」：後ろのレンズを順番に切り替える（選んだレンズは覚えておく）
+$("lensBtn").onclick = async () => {
+  if (!backCams.length || !track) return;
+  const cur = track.getSettings().deviceId, i = backCams.findIndex(d => d.deviceId === cur), next = backCams[(i + 1) % backCams.length];
+  store.set("cam", next.deviceId); stopCam(); await startCam();
+  toast(`レンズ ${backCams.findIndex(d => d.deviceId === next.deviceId) + 1} / ${backCams.length}（いちばんくっきり写るものを選んでください）`, 2500);
+};
 function stopCam() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; track = null; } }
 function leaveCam() { stopCam(); closeCard(); S.frozen = false; S.shot = null; setZoom(1, 0, 0); $("cam").classList.remove("frz"); }
 async function setTorch(on) {
@@ -456,26 +502,26 @@ function lookUp(sx, sy) {
   drawLoupe(ix, iy, pps);
   openCard(sy);
   if (S.demo) return showResult(demoLookup(ix, iy));
-  if (!GEM.get()) { $("ctx").innerHTML = ""; $("detail").innerHTML = `<div class="pp">調べるには、⚙ 設定でGeminiの鍵を入れてください。</div>`; return; }
-  $("ctx").innerHTML = ""; $("detail").innerHTML = `<div class="wait"><div class="spin"></div>読み取り中…</div>`;
+  if (!GEM.get()) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">調べるには、⚙ 設定でGeminiの鍵を入れてください。</div>`; return; }
+  $("ctx").innerHTML = `<div class="wait"><div class="spin"></div>読み取り中…</div>`; $("detail").innerHTML = ""; $("hint2").style.display = "none";
   if (lookCtl) lookCtl.abort();
   const ctl = lookCtl = new AbortController(), seq = ++lookSeq, t0 = Date.now();
   // 送る画像：触った所を中心に、画面で約300点四方（前後の文字も入るように）
-  const side = 300 * pps, x0 = ix - side / 2, y0 = iy - side / 2, out = 640, k = out / side;
+  const side = 520 * pps, x0 = ix - side / 2, y0 = iy - side / 2, out = 960, k = out / side; // セリフ全体が入るよう広めに
   const cv = document.createElement("canvas"); cv.width = cv.height = out;
   const c = cv.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0, 0, out, out); c.imageSmoothingQuality = "high";
   c.drawImage(S.shot, x0, y0, side, side, 0, 0, out, out);
   enhance(cv);
   c.strokeStyle = "#ff1a1a"; c.lineWidth = 4; c.beginPath(); c.arc(out / 2, out / 2, 26 * pps * k, 0, Math.PI * 2); c.stroke();
-  const body = { contents: [{ role: "user", parts: [{ text: lookPrompt() }, imgPart(cv.toDataURL("image/jpeg", 0.88))] }], generationConfig: { temperature: 0.1, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } } };
+  const body = { contents: [{ role: "user", parts: [{ text: lookPrompt() }, imgPart(cv.toDataURL("image/jpeg", 0.88))] }], generationConfig: { temperature: 0.1, maxOutputTokens: 500, thinkingConfig: { thinkingBudget: 0 } } };
   geminiCall(body, null, ctl.signal).then(text => {
     if (seq !== lookSeq) return;
     const r = parseLook(text);
-    if (!r) { $("ctx").innerHTML = ""; $("detail").innerHTML = `<div class="pp">赤い輪の所に漢字が見つかりませんでした。拡大して、漢字の真ん中に触れてみてください。</div>`; return; }
+    if (!r) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">赤い輪の所に漢字が見つかりませんでした。拡大して、漢字の真ん中に触れてみてください。</div>`; return; }
     r.ms = Date.now() - t0; showResult(r);
   }).catch(err => {
     if (seq !== lookSeq || ctl.signal.aborted) return;
-    $("ctx").innerHTML = ""; $("detail").innerHTML = `<div class="pp">${esc(errMsg(err))}</div>`;
+    $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">${esc(errMsg(err))}</div>`;
   });
 }
 function lookPrompt() {
@@ -488,15 +534,15 @@ ${b}次の形で1行だけ書いてください。説明や前置き、\`\`\` �
 - 漢字：輪の中の漢字を含む、漢字が続いている所（漢字のかたまり）
 - 言葉：送り仮名を含めた言葉
 - 読み：漢字のかたまりの読み（ひらがな）。前後の文に合う読み方。
-- 前：同じ文の中で、言葉のすぐ前にある文字（6文字まで。なければ空）
-- 後：言葉のすぐ後にある文字（6文字まで。なければ空）
+- 前：同じセリフ（吹き出し）または同じ文の中で、言葉より前にある文字すべて（40文字まで）。行が変わる所に ／ を入れる。なければ空
+- 後：同じセリフまたは同じ文の中で、言葉より後にある文字すべて（40文字まで）。行が変わる所に ／ を入れる。なければ空
 - 学年：いちばん難しい漢字を習う学年。小学1〜6年は 1〜6、中学の常用漢字は 7、常用漢字にない字は 8
 - 名：人の名前・地名・店や会社の名前なら 名、ちがえば空
 - 内訳：2字以上のときだけ、1字ずつの読み（例：青=あお,空=ぞら<そら。< の後ろは、もとの読み）。熟字訓（今日・大人など）は空
 - ほか：名前などで読み方が何通りもあるときだけ、ほかの読み方を「,」で区切る
 - 意味：言葉のやさしい意味（25文字くらい。この文の中での意味）
 
-例：縦|青空|青空|あおぞら|下には|の下、|1||青=あお,空=ぞら<そら||晴れた青い空
+例：縦|青空|青空|あおぞら|見上げた／|の下で、／二人は笑った|1||青=あお,空=ぞら<そら||晴れた青い空
 
 - 画像に元から小さく印刷されているふりがな（ルビ）があれば、それを読みに使う。
 - 昔の仮名づかいの文でも、読みは今の読み方のひらがなにする。
@@ -542,17 +588,21 @@ function rubyWord(r) {
 }
 const LV = { 1: "小1", 2: "小2", 3: "小3", 4: "小4", 5: "小5", 6: "小6", 7: "中学", 8: "常用外" };
 function showResult(r) {
-  if (!r) { $("ctx").innerHTML = ""; $("detail").innerHTML = `<div class="pp">ここには漢字が見つかりませんでした。漢字の真ん中に触れてみてください。</div>`; return; }
-  const bef = [...r.before].slice(-4).join(""), aft = [...r.after].slice(0, 4).join(""); // 前後は4文字まで（大きく見せるため）
-  const len = [...(bef + r.full + aft)].length, box = $("ctx");
-  box.innerHTML = `<div class="ctx${r.v ? " v" : ""}"><span class="dim">${esc(bef)}</span>${rubyWord(r)}<span class="dim">${esc(aft)}</span></div>`;
+  if (!r) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">ここには漢字が見つかりませんでした。漢字の真ん中に触れてみてください。</div>`; return; }
+  // セリフ全体を、行の区切り（／）どおりに書く。触った言葉だけにふりがな
+  const br = s => esc(s).replace(/[／\/]/g, "<br>");
+  const lines = (r.before + r.full + r.after).split(/[／\/]/), maxLen = Math.max(...lines.map(s => [...s].length)), box = $("ctx");
+  box.innerHTML = `<div class="ctx${r.v ? " v" : ""}"><span class="dim">${br(r.before)}</span>${rubyWord(r)}<span class="dim">${br(r.after)}</span></div>`;
   // 枠に収まる大きさに
-  const el = box.firstChild; let fs = Math.min(32, ((r.v ? box.clientHeight : box.clientWidth) - 14) / Math.max(4, len));
+  const el = box.firstChild; let fs = Math.min(30, ((r.v ? box.clientHeight : box.clientWidth) - 14) / Math.max(4, maxLen));
   el.style.fontSize = fs + "px";
-  for (let i = 0; i < 20 && (el.offsetWidth > box.clientWidth - 8 || el.offsetHeight > box.clientHeight - 8) && fs > 10; i++) { fs *= 0.9; el.style.fontSize = fs + "px"; }
+  for (let i = 0; i < 24 && (el.offsetWidth > box.clientWidth - 8 || el.offsetHeight > box.clientHeight - 8) && fs > 9; i++) { fs *= 0.9; el.style.fontSize = fs + "px"; }
+  el.querySelector(".tgt").onclick = () => { const d = $("detail"); d.style.display = d.style.display === "none" ? "block" : "none"; };
   const fullR = r.full.replace(r.t, r.r);
   const ps = goodParts(r) || [];
   const brk = ps.map(p => `${esc(p.k)}：${p.base && p.base !== p.r ? `${esc(p.base)}→<b>${esc(p.r)}</b>` : esc(p.r)}`).join("／");
+  $("detail").style.display = "none"; // 詳しい説明は、ふりがなの付いた言葉に触れたときだけ
+  $("hint2").style.display = "block";
   $("detail").innerHTML =
     `<div><span class="pw">${esc(r.full)}</span><span class="pr">${esc(fullR)}</span></div>` +
     (brk ? `<div class="pp">${brk}</div>` : "") +
@@ -560,7 +610,7 @@ function showResult(r) {
     (r.alt && r.alt.length ? `<div class="pp">ほかの読み方：${r.alt.map(esc).join("、")}</div>` : "") +
     `<div style="margin-top:4px">${r.lv ? `<span class="tag">${LV[r.lv] || ""}の漢字</span>` : ""}${r.name ? `<span class="tag">名前</span>` : ""}${r.ms ? `<span class="tag">${(r.ms / 1000).toFixed(1)}秒</span>` : ""}</div>` +
     (r.name ? `<div class="note" style="font-size:12px;margin-top:4px">名前の読みは推測です。ご本人や本の中の説明で確かめてください。</div>` : "") +
-    `<div class="note" style="font-size:12px;margin-top:4px">違う漢字のときは、拡大して漢字の真ん中に触れ直してください。</div>`;
+    "";
 }
 
 // ===== 見本（鍵なしで動きを確かめる。紙に縦書きした文を絵で作り、どの字がどこにあるかも分かっている） =====
@@ -596,7 +646,7 @@ function demoLookup(ix, iy) {
   if (!best || bd > 60) return null;
   const w = best.words.find(w => best.ci >= w.s && best.ci < w.e); if (!w) return null;
   const full = w.t + (w.f[2] === "名" ? "" : (w.f[4] || "")); // 送り仮名は見本の答えに書いてある
-  const r = { v: true, t: w.t, full, r: w.f[0], lv: +w.f[1] || 8, before: best.plain.slice(Math.max(0, w.s - 6), w.s), after: best.plain.slice(w.s + full.length, w.s + full.length + 6) };
+  const r = { v: true, t: w.t, full, r: w.f[0], lv: +w.f[1] || 8, before: best.plain.slice(0, w.s), after: best.plain.slice(w.s + full.length) };
   if (w.f[2] === "名") { r.name = true; r.alt = (w.f[3] || "").split(","); }
   else { if (w.f[2]) r.parts = w.f[2].split(",").map(s => { const m = s.match(/^(.+?)=([^<]+)(?:<(.+))?$/); return m ? { k: m[1], r: m[2], base: m[3] } : null; }).filter(Boolean); r.m = w.f[3] || ""; }
   return r;
