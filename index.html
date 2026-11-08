@@ -46,7 +46,7 @@ h2{font-size:17px;margin:20px 0 8px}
 #ov .lab{position:absolute;background:rgba(255,255,255,.92);color:#b0270e;font-weight:700;line-height:1.05;padding:1px 2px;border-radius:3px;white-space:nowrap;box-shadow:0 0 0 1px rgba(176,39,14,.35);font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
 #ov .lab.v{writing-mode:vertical-rl}
 #ov .name .lab{color:#1f5fc4;box-shadow:0 0 0 1px rgba(31,95,196,.4)}
-#ov .lab.hide{display:none}
+#ov .lab.hide,#ov .lab.crowd{display:none}
 #drawcv{position:absolute;inset:0;pointer-events:none}
 #selrect{position:absolute;border:3px solid #ff2a2a;border-radius:6px;display:none;pointer-events:none}
 #selrect.busy{animation:pulse 1s ease-in-out infinite}
@@ -421,7 +421,7 @@ function enhance(cv) {
 
 // ===== 指の操作（カメラ中：触ると止まる／止めた後：囲う・なぞる・タップ） =====
 (() => {
-  const stage = $("stage"), cv = $("drawcv"); let pts = null, pinch = null, wasPinch = false;
+  const stage = $("stage"), cv = $("drawcv"); let pts = null, pinch = null, wasPinch = false, lastPinch = 0, downT = 0;
   const fingers = new Map();
   const unz = (x, y) => [(x - Z.tx) / Z.z, (y - Z.ty) / Z.z]; // 画面の位置 → 拡大前の位置
   const toN = (x, y) => { const d = disp(), [ux, uy] = unz(x, y); return [(ux - d.x) / d.w * 1000, (uy - d.y) / d.h * 1000]; }; // 写真の上の位置（0〜1000）
@@ -445,7 +445,7 @@ function enhance(cv) {
       return;
     }
     if (fingers.size > 2 || pinch) return;
-    wasPinch = false;
+    wasPinch = false; downT = Date.now();
     pts = [[e.clientX, e.clientY]];
     cv.width = innerWidth; cv.height = innerHeight;
   });
@@ -465,15 +465,21 @@ function enhance(cv) {
       freeze(captureVisible()); return;
     }
     fingers.delete(e.pointerId);
-    if (pinch) { if (fingers.size < 2) pinch = null; return; }
+    if (pinch) { if (fingers.size < 2) { pinch = null; lastPinch = Date.now(); } return; }
     if (wasPinch) { if (!fingers.size) wasPinch = false; return; } // 拡大のあとに残った指は何もしない
     if (!pts) return;
     const p = pts; pts = null; clearDraw();
     const xs = p.map(q => q[0]), ys = p.map(q => q[1]);
     const bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
-    if (Math.max(bw, bh) < 14) { // ちょんと触れた → その言葉の説明
-      const [nx, ny] = toN(p[0][0], p[0][1]), i = wordAtN(nx, ny, 12);
-      if (i >= 0) selectWord(i); else hideSheet();
+    if (Date.now() - lastPinch < 500) return; // 拡大の直後の指は、何もしない
+    if (Math.max(bw, bh) < 14) { // ちょんと触れた → その言葉の説明（2本目の指が来るかもしれないので、少し待ってから）
+      if (Date.now() - downT > 600) return; // 長く押したままなら、タップにしない
+      const tapAt = p[0], myT = downT;
+      setTimeout(() => {
+        if (fingers.size || downT !== myT || Date.now() - lastPinch < 500) return; // その間に指が増えた → 2本指の操作
+        const [nx, ny] = toN(tapAt[0], tapAt[1]), i = wordAtN(nx, ny, 12);
+        if (i >= 0) selectWord(i); else hideSheet();
+      }, 180);
       return;
     }
     const closeEnd = Math.hypot(p[p.length - 1][0] - p[0][0], p[p.length - 1][1] - p[0][1]) < Math.max(bw, bh) * 0.45;
@@ -486,7 +492,11 @@ function enhance(cv) {
     const [ux, uy] = unz(bx, by);
     readRegion(ux, uy, bw / Z.z, bh / Z.z); // 囲った（または斜めに引いた）所を読む
   };
-  stage.addEventListener("pointerup", end); stage.addEventListener("pointercancel", end);
+  stage.addEventListener("pointerup", end);
+  stage.addEventListener("pointercancel", e => { // ブラウザに止められた指は、何もしない（2本指のときに起きやすい）
+    fingers.delete(e.pointerId); if (pinch && fingers.size < 2) { pinch = null; lastPinch = Date.now(); }
+    if (!fingers.size) wasPinch = false; pts = null; clearDraw();
+  });
   stage.addEventListener("wheel", e => { // パソコンのホイールでも拡大（確認用）
     if (!S.frozen) return; e.preventDefault();
     const z = Z.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), ux = (e.clientX - Z.tx) / Z.z, uy = (e.clientY - Z.ty) / Z.z;
@@ -545,6 +555,9 @@ async function readRegion(sx, sy, sw, sh, whole) {
   enhance(cv);
   Object.assign($("selrect").style, { display: "block", left: (d.x + x / k) + "px", top: (d.y + y / k) + "px", width: ((x2 - x) / k) + "px", height: ((y2 - y) / k) + "px" });
   $("selrect").classList.add("busy");
+  // 囲い直した所の古い札は消して、読み直した札に入れ替える
+  const inR = w => { const cy = (w.b[0] + w.b[2]) / 2000, cx = (w.b[1] + w.b[3]) / 2000; return cx >= R.x && cx <= R.x + R.w && cy >= R.y && cy <= R.y + R.h; };
+  if (S.words.length) { hideSheet(); S.words = S.words.filter(w => !w.b || !inR(w)); renderOverlay(); }
   S.reading = true; setHint();
   const shot = S.shot, t0 = Date.now(), chip = $("chip"); let tFirst = 0, count = 0, buf = "";
   chip.style.display = "block";
@@ -555,7 +568,7 @@ async function readRegion(sx, sy, sw, sh, whole) {
     if (S.shot !== shot) return;
     const w = parseLine(line, R); if (!w) return;
     if (!tFirst) tFirst = Date.now();
-    count++; S.words.push(w); renderOverlay();
+    count++; addWord(w); renderOverlay();
   };
   try {
     const body = { contents: [{ role: "user", parts: [{ text: prompt() }, imgPart(cv.toDataURL("image/jpeg", 0.85))] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } } };
@@ -572,6 +585,12 @@ async function readRegion(sx, sy, sw, sh, whole) {
     clearInterval(tick);
     if (readCtl === ctl) { readCtl = null; endReadUI(); } // 止めた読み取りの後始末は、次の読み取りを邪魔しない
   }
+}
+// 同じ漢字が同じ場所に重ねて届いたら、新しい方に置き換える（札が何枚も重ならないように）
+const overlap = (a, b) => { const iy = Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])), ix = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])); const ar = (a[2] - a[0]) * (a[3] - a[1]), br = (b[2] - b[0]) * (b[3] - b[1]); return ix * iy / Math.max(1, Math.min(ar, br)); };
+function addWord(w) {
+  const j = S.words.findIndex(o => o.b && (overlap(o.b, w.b) > 0.5 && (o.t === w.t || o.t.includes(w.t) || w.t.includes(o.t))));
+  if (j >= 0) S.words[j] = w; else S.words.push(w);
 }
 // 1行（向き|漢字|言葉|読み|上,左,下,右|学年|名|内訳|ほか）→ 言葉。位置は写真全体の 0〜1000 に直す
 function parseLine(line, R) {
@@ -629,6 +648,24 @@ function renderOverlay() {
       : `<span class="lab${rubyOn(w) ? "" : " hide"}" style="left:0;bottom:100%;font-size:${fs}px">${esc(kanjiReading(w))}</span>`;
     return `<div class="w${w.name ? " name" : ""}${i === S.sel ? " sel" : ""}" data-i="${i}" style="left:${L}%;top:${T}%;width:${Wd}%;height:${Ht}%">${lab}</div>`;
   }).join("");
+  declutter();
+}
+// セリフが密集して札がぶつかるとき：反対側にずらす → それでもぶつかれば、やさしい漢字の札を隠す（タップすれば読みは見られる）
+function declutter() {
+  const memo = store.get("memo", {});
+  const pri = i => { const w = S.words[i]; return i === S.sel ? 1000 : w.name ? 500 : memo[w.t] === 1 ? 400 : (+w.lv || 8) * 10; };
+  const labs = [...document.querySelectorAll("#ov .lab:not(.hide)")].map(el => ({ el, i: +el.parentNode.dataset.i }));
+  labs.sort((a, b) => pri(b.i) - pri(a.i));
+  const kept = [], hit = r => kept.some(k => r.left < k.right - 1 && r.right > k.left + 1 && r.top < k.bottom - 1 && r.bottom > k.top + 1);
+  for (const L of labs) {
+    let r = L.el.getBoundingClientRect();
+    if (hit(r)) { // 反対側へ（縦書きは左、横書きは下）
+      if (L.el.classList.contains("v")) { L.el.style.left = "auto"; L.el.style.right = "100%"; } else { L.el.style.bottom = "auto"; L.el.style.top = "100%"; }
+      r = L.el.getBoundingClientRect();
+      if (hit(r)) { L.el.classList.add("crowd"); continue; }
+    }
+    kept.push(r);
+  }
 }
 function applyRuby(i) {
   const on = rubyOn(S.words[i]);
@@ -642,7 +679,6 @@ function traceWords(ids) {
   const memo = store.get("memo", {}), anyHidden = others.some(i => !rubyOn(S.words[i]));
   others.forEach(i => { memo[S.words[i].t] = anyHidden ? 1 : 0; });
   store.set("memo", memo);
-  others.forEach(applyRuby);
   selectWord(others[others.length - 1]);
   toast(anyHidden ? "ふりがなを付けました。次からも付けます" : "ふりがなを消しました");
 }
@@ -664,7 +700,7 @@ function explain(w) {
 function selectWord(i) {
   S.sel = i;
   document.querySelectorAll(".w.sel").forEach(e => e.classList.remove("sel"));
-  document.querySelectorAll(`.w[data-i="${i}"]`).forEach(e => e.classList.add("sel"));
+  renderOverlay();
   const html = explain(S.words[i]);
   if ($("cam").classList.contains("on")) {
     $("sheetBody").innerHTML = html;
@@ -675,7 +711,7 @@ function selectWord(i) {
     sh.style.bottom = below ? ($("cambot").offsetHeight + 4) + "px" : "";
   }
 }
-function hideSheet() { $("sheet").style.display = "none"; S.sel = -1; document.querySelectorAll(".w.sel").forEach(e => e.classList.remove("sel")); }
+function hideSheet() { $("sheet").style.display = "none"; if (S.sel !== -1) { S.sel = -1; renderOverlay(); } }
 $("sheetX").onclick = hideSheet;
 
 
