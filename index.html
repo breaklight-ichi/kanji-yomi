@@ -128,8 +128,15 @@ h2{font-size:17px;margin:20px 0 8px}
   <div class="row" style="justify-content:flex-start"><button class="sub" style="flex:none" data-back>← もどる</button></div>
   <h1>⚙ 設定</h1>
   <h2>Geminiの鍵</h2>
-  <p class="note">Google AI Studio で作った鍵を貼り付けてください。鍵はこのスマホの中だけに保存され、写真は直接Googleに送られます。</p>
-  <input id="keyIn" type="password" autocomplete="off" placeholder="AIza…">
+  <p class="note">鍵はこのスマホの中だけに保存され、写真は直接Googleに送られます。</p>
+  <a id="keyLink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;padding:14px;border-radius:12px;background:#1a73e8;color:#fff;font-weight:600">🔑 鍵のページを開く（Google AI Studio）</a>
+  <ol class="note" style="padding-left:20px;margin:8px 0">
+    <li>上の青いボタンを押す（Googleのページが開きます）</li>
+    <li>鍵（AIza…で始まる文字）の右の「コピー」の印を押す<br>※ 鍵がまだないときは「APIキーを作成」（Create API key）を押す</li>
+    <li>このアプリに戻り、下の「📋 貼り付け」を押す</li>
+    <li>「保存」を押す</li>
+  </ol>
+  <div class="row"><input id="keyIn" type="password" autocomplete="off" placeholder="AIza…"><button class="sub" id="keyPaste" style="flex:none">📋 貼り付け</button></div>
   <div class="row" style="margin-top:8px"><button id="keySave">保存</button><button class="sub" id="keyDel">消す</button></div>
   <h2>やさしい漢字のふりがな</h2>
   <select id="lvSel">
@@ -273,7 +280,15 @@ function refreshSet() {
   $("memoCount").textContent = `今、${Object.keys(store.get("memo", {})).length} 個の言葉を覚えています。`;
 }
 $("keySave").onclick = () => { const k = $("keyIn").value.trim(); if (!k) return toast("鍵を貼り付けてください"); GEM.set(k); toast("保存しました"); };
-$("keyDel").onclick = () => { GEM.set(""); $("keyIn").value = ""; toast("鍵を消しました"); };
+$("keyPaste").onclick = async () => {
+  try {
+    const t = ((await navigator.clipboard.readText()) || "").trim();
+    if (!t) return toast("コピーされた文字がありません。鍵のページで「コピー」を押してから戻ってください", 3500);
+    $("keyIn").value = t;
+    toast(/^AIza/.test(t) ? "貼り付けました。「保存」を押してください" : "貼り付けました。AIza…で始まる鍵か確かめてから「保存」を押してください", 3500);
+  } catch (e) { $("keyIn").focus(); toast("自動で貼り付けできませんでした。入力欄を長押しして「貼り付け」を選んでください", 4000); }
+};
+$("keyDel").onclick =() => { GEM.set(""); $("keyIn").value = ""; toast("鍵を消しました"); };
 $("lvSel").onchange = () => store.set("lv", +$("lvSel").value);
 $("memoClear").onclick = () => { if (confirm("なぞって覚えた言葉をすべて消しますか？")) { store.set("memo", {}); refreshSet(); } };
 
