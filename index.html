@@ -92,7 +92,7 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作9</span></h1>
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作10</span></h1>
   <p class="note">読めない漢字をカメラで写して指で触れると、その漢字のふりがなと説明を出します。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
   <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
@@ -172,7 +172,7 @@ h2{font-size:17px;margin:20px 0 8px}
   </div>
   <div id="camerr"></div>
   <div id="lcard">
-    <div class="top"><div class="left"><canvas id="loupe" width="264" height="264"></canvas><button class="sub x" id="lcardX" aria-label="閉じる">× 閉じる</button></div><div id="ctx"></div></div>
+    <div class="top"><div class="left"><canvas id="loupe" width="264" height="264"></canvas><button class="sub x" id="lcardX" aria-label="閉じる">× 閉じる</button><button class="sub x" id="dirBtn" style="display:none">縦⇄横</button></div><div id="ctx"></div></div>
     <div class="hint2" id="hint2">文は<b>2本指で広げる</b>と大きくなり、<b>指でスライド</b>すると動きます。ふりがなの付いた言葉に触れると、詳しい説明が出ます。ほかの漢字も、触れるとふりがなが出ます。</div>
     <div id="detail"></div>
   </div>
@@ -531,7 +531,7 @@ function lookUp(sx, sy) {
   openCard(sy);
   if (S.demo) return showResult(demoLookup(ix, iy));
   if (!GEM.get()) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">調べるには、⚙ 設定でGeminiの鍵を入れてください。</div>`; return; }
-  $("ctx").innerHTML = `<div class="wait"><div class="spin"></div>読み取り中…</div>`; $("detail").innerHTML = ""; $("hint2").style.display = "none";
+  $("ctx").innerHTML = `<div class="wait"><div class="spin"></div>読み取り中…</div>`; $("detail").innerHTML = ""; $("hint2").style.display = "none"; $("dirBtn").style.display = "none";
   if (lookCtl) lookCtl.abort();
   const ctl = lookCtl = new AbortController(), seq = ++lookSeq, t0 = Date.now();
   // 送る画像：触った所を中心に、画面で約300点四方（前後の文字も入るように）
@@ -546,7 +546,9 @@ function lookUp(sx, sy) {
     if (seq !== lookSeq) return;
     const r = parseLook(text);
     if (!r) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">赤い輪の所に漢字が見つかりませんでした。拡大して、漢字の真ん中に触れてみてください。</div>`; return; }
-    r.ms = Date.now() - t0; showResult(r);
+    r.ms = Date.now() - t0;
+    const pref = store.get("dir", {})[dirKey()]; if (pref) r.v = pref === "v"; // この本で向きを選んだことがあれば、それに合わせる
+    showResult(r);
   }).catch(err => {
     if (seq !== lookSeq || ctl.signal.aborted) return;
     $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">${esc(errMsg(err))}</div>`;
@@ -558,7 +560,7 @@ function lookPrompt() {
 ${b}次の形で1行だけ書いてください。説明や前置き、\`\`\` は書かないでください。
 向き|漢字|言葉|読み|前|後|学年|名|内訳|ほか|意味
 
-- 向き：その文が縦書きなら 縦、横書きなら 横
+- 向き：輪の中の文字の並び方。文字が上から下へ並んでいる（行が右から左へ進む）なら 縦、左から右へ並んでいるなら 横。マンガの吹き出しや小説は、ほとんどが 縦
 - 漢字：輪の中の漢字を含む、漢字が続いている所（漢字のかたまり）
 - 言葉：送り仮名を含めた言葉
 - 読み：漢字のかたまりの読み（ひらがな）。前後の文に合う読み方。
@@ -665,7 +667,18 @@ function rubyWord(r) {
   return `<span class="tgt">${esc(pre)}${mid}${esc(post)}</span>`;
 }
 const LV = { 1: "小1", 2: "小2", 3: "小3", 4: "小4", 5: "小5", 6: "小6", 7: "中学", 8: "常用外" };
+// 「縦⇄横」：表示の向きを切り替える。選んだ向きは本ごと（ふだん使いは1つ）に覚えて、次からも使う
+const dirKey = () => S.mode === "read" && S.book ? "book:" + S.book.title : "daily";
+let lastR = null;
+$("dirBtn").onclick = () => {
+  if (!lastR) return;
+  lastR.v = !lastR.v;
+  const all = store.get("dir", {}); all[dirKey()] = lastR.v ? "v" : "h"; store.set("dir", all);
+  showResult(lastR);
+  toast(lastR.v ? "縦書きで表示します（この本では次からも縦書き）" : "横書きで表示します（この本では次からも横書き）", 2200);
+};
 function showResult(r) {
+  lastR = r; $("dirBtn").style.display = r ? "" : "none";
   if (!r) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">ここには漢字が見つかりませんでした。漢字の真ん中に触れてみてください。</div>`; return; }
   // セリフ全体を、行の区切り（／）どおりに書く。触った言葉だけにふりがな
   // 前後の文：《読み》の付いた漢字は、触れるとふりがなが出るようにしておく（最初は隠す）
