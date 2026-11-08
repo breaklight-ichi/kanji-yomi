@@ -1,8 +1,8 @@
 // カンミルーペ（漢字よみカメラ）：オフラインでも画面が開くように、アプリ本体だけを保存する
 // （写真やAIへの通信は保存しない）
 // 新しい版を上げたら、下の名前の数字を1つ上げる（kanji-yomi-v1 → v2）
-const CACHE = "kanji-yomi-v1";
-const FILES = ["./", "index.html", "privacy.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"];
+const CACHE = "kanji-yomi-v2";
+const FILES = ["./", "index.html", "privacy.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
