@@ -5,13 +5,12 @@
 <title>漢字よみカメラ</title>
 <meta name="theme-color" content="#1d2433">
 <style>
-:root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#666;--line:#ddd;--acc:#c62828;--btn:#1d2433;--btnink:#fff;--soft:#eef1f6;--rt:#b23a1e}
+:root{--bg:#f6f4ef;--card:#fff;--ink:#222;--sub:#666;--line:#ddd;--btn:#1d2433;--btnink:#fff;--soft:#eef1f6;--rt:#b23a1e}
 @media (prefers-color-scheme:dark){:root{--bg:#15171c;--card:#1f232b;--ink:#eee;--sub:#aaa;--line:#384050;--btn:#e8eaf0;--btnink:#15171c;--soft:#2a303b;--rt:#ff9a7a}}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 16px;background:var(--btn);color:var(--btnink);font-weight:600}
 button.sub{background:var(--soft);color:var(--ink)}
-button:disabled{opacity:.4}
 input,select{font:inherit;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
 .scr{display:none;min-height:100%}
 .scr.on{display:flex;flex-direction:column}
@@ -30,25 +29,43 @@ h2{font-size:17px;margin:20px 0 8px}
 .book img,.book .noimg{width:44px;height:60px;object-fit:cover;border-radius:4px;background:var(--soft);flex:none;display:flex;align-items:center;justify-content:center}
 .book b{display:block}
 .book span{font-size:13px;color:var(--sub)}
-/* カメラ */
-#cam{background:#000;color:#fff;position:fixed;inset:0}
+
+/* ===== カメラ（撮る → 止まった写真の上にふりがな） ===== */
+#cam{background:#000;color:#fff;position:fixed;inset:0;overflow:hidden}
 #cam.on{display:block}
-#video,#still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#still{display:none}
-#frame{position:absolute;border:3px solid #ff2a2a;border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);pointer-events:none}
-.camtop{position:absolute;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;padding:10px;padding-top:max(10px,env(safe-area-inset-top))}
+#stage{position:absolute;inset:0;touch-action:none;user-select:none;-webkit-user-select:none}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#still{position:absolute;display:none}
+#cam.frz #video{visibility:hidden}
+#cam.frz #still{display:block}
+#ov{position:absolute;pointer-events:none}
+#ov .w{position:absolute;border-radius:3px}
+#ov .w.sel{background:rgba(255,213,74,.45);outline:2px solid #ffb300}
+#ov .w.tr{background:rgba(100,160,255,.4)}
+#ov .lab{position:absolute;background:rgba(255,255,255,.92);color:#b0270e;font-weight:700;line-height:1.05;padding:1px 2px;border-radius:3px;white-space:nowrap;box-shadow:0 0 0 1px rgba(176,39,14,.35);font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
+#ov .lab.v{writing-mode:vertical-rl}
+#ov .name .lab{color:#1f5fc4;box-shadow:0 0 0 1px rgba(31,95,196,.4)}
+#ov .lab.hide{display:none}
+#drawcv{position:absolute;inset:0;pointer-events:none}
+#selrect{position:absolute;border:3px solid #ff2a2a;border-radius:6px;display:none;pointer-events:none}
+#selrect.busy{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{border-color:rgba(255,42,42,.25)}}
+.camtop{position:absolute;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;padding:10px;padding-top:max(10px,env(safe-area-inset-top));background:linear-gradient(rgba(0,0,0,.5),transparent)}
 .camtop .ttl{flex:1;font-size:14px;text-shadow:0 1px 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cambtn{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.35);padding:10px 12px;font-size:15px}
+.cambtn{background:rgba(0,0,0,.6);color:#fff;border:1px solid rgba(255,255,255,.35);padding:10px 12px;font-size:15px}
 .cambtn.on{background:#ffd54a;color:#000}
-.cambot{position:absolute;left:0;right:0;bottom:0;padding:12px;padding-bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;align-items:center}
-.sizes{display:flex;gap:6px}
-.sizes button{padding:8px 12px;font-size:14px}
-.shrow{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px}
-.shrow>*{width:90px}
-#shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);background-clip:padding-box;padding:0}
-#camhint{font-size:13px;text-shadow:0 1px 3px #000;text-align:center}
+.cambot{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;padding-bottom:max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.cambot .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#camhint{font-size:14px;text-shadow:0 1px 3px #000;text-align:center;line-height:1.5}
 #camerr{position:absolute;top:35%;left:16px;right:16px;text-align:center;line-height:1.7;display:none}
-/* 結果 */
+#chip{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 52px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:8px 14px;border-radius:99px;font-size:14px;display:none;white-space:nowrap}
+#sheet{position:absolute;left:8px;right:8px;background:var(--card);color:var(--ink);border-radius:14px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);display:none;max-height:30%;overflow:auto}
+#sheet .x{position:absolute;right:6px;top:6px;padding:4px 10px;font-size:16px}
+.live-only,.frz-only{display:none}
+#cam:not(.frz) .live-only{display:inline-block}
+#cam.frz .frz-only{display:inline-block}
+
+/* ===== 文字で見る ===== */
 #res{position:fixed;inset:0}
 #res.on{display:flex}
 .reshead{display:flex;gap:8px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));border-bottom:1px solid var(--line);background:var(--card)}
@@ -59,7 +76,6 @@ h2{font-size:17px;margin:20px 0 8px}
 #text{font-size:22px;line-height:2.1;font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif}
 #textbox.v{writing-mode:vertical-rl}
 #text.v{line-height:2.2}
-#text ruby{ruby-position:over}
 #text rt{font-size:.5em;color:var(--rt);font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
 #text rt.hide{visibility:hidden}
 #text .w{border-radius:4px}
@@ -72,26 +88,24 @@ h2{font-size:17px;margin:20px 0 8px}
   .resbody{flex-direction:row}
   #panel{flex:none;width:36%;border-top:0;border-left:2px solid var(--line)}
 }
-#panel .pw{font-size:26px;font-weight:700;font-family:"Hiragino Mincho ProN","Noto Serif JP",serif}
-#panel .pr{font-size:18px;color:var(--rt);margin-left:8px}
-#panel .pp{margin:6px 0;font-size:16px}
-#panel .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);margin-right:4px}
-#photo{display:none;position:absolute;inset:0;background:rgba(0,0,0,.85);z-index:5;align-items:center;justify-content:center}
-#photo img{max-width:96%;max-height:90%}
+.pw{font-size:24px;font-weight:700;font-family:"Hiragino Mincho ProN","Noto Serif JP",serif}
+.pr{font-size:18px;color:var(--rt);margin-left:8px}
+.pp{margin:6px 0;font-size:16px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);margin-right:4px}
+#toast{position:fixed;left:50%;top:calc(max(10px,env(safe-area-inset-top)) + 64px);transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:30;max-width:90%;text-align:center;line-height:1.5}
 #busy{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:20;font-size:18px}
 .spin{width:42px;height:42px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-#toast{position:fixed;left:50%;bottom:24%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:30;max-width:90%;text-align:center;line-height:1.5}
 </style>
 </head>
 <body>
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作1</span></h1>
-  <p class="note">読めない漢字をカメラで写すと、ふりがなを付けます。</p>
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作2</span></h1>
+  <p class="note">読めない漢字をカメラで写すと、写真の上にふりがなを付けます。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
-  <button class="big" id="goRead">📖 読書モード<small>本の名前を入れてから読みます。読みの正しさが上がります</small></button>
+  <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
   <button class="big" id="goDaily">📷 ふだん使い<small>看板・書類・手紙など</small></button>
   <div class="row" style="margin-top:6px">
     <button class="sub" id="goDemo">見本で試す</button>
@@ -138,6 +152,11 @@ h2{font-size:17px;margin:20px 0 8px}
   </ol>
   <div class="row"><input id="keyIn" type="password" autocomplete="off" placeholder="AIza…"><button class="sub" id="keyPaste" style="flex:none">📋 貼り付け</button></div>
   <div class="row" style="margin-top:8px"><button id="keySave">保存</button><button class="sub" id="keyDel">消す</button></div>
+  <h2>読み取りの速さ</h2>
+  <select id="spdSel">
+    <option value="fast">速さ優先（おすすめ）</option>
+    <option value="accurate">正しさ優先（少し待ちます）</option>
+  </select>
   <h2>やさしい漢字のふりがな</h2>
   <select id="lvSel">
     <option value="0">ぜんぶの漢字に付ける</option>
@@ -145,7 +164,7 @@ h2{font-size:17px;margin:20px 0 8px}
     <option value="4">小学4年までの漢字には付けない</option>
     <option value="6">小学校の漢字には付けない</option>
   </select>
-  <p class="note">付けなかった漢字が読めないときは、結果の画面でその上を指でなぞるとふりがなが出ます。なぞった言葉は覚えて、次から最初から付けます。人の名前・地名には、いつも付けます。</p>
+  <p class="note">付けなかった漢字が読めないときは、その上を指でなぞるとふりがなが出ます。なぞった言葉は覚えて、次から最初から付けます。人の名前・地名には、いつも付けます。</p>
   <h2>なぞって覚えた言葉</h2>
   <p class="note" id="memoCount"></p>
   <button class="sub" id="memoClear">覚えた言葉を消す</button>
@@ -153,43 +172,43 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== カメラ ===== -->
 <section id="cam" class="scr">
-  <video id="video" playsinline muted autoplay></video>
-  <img id="still" alt="">
-  <div id="frame"></div>
+  <div id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <img id="still" alt="">
+    <div id="ov"></div>
+    <div id="selrect"></div>
+    <canvas id="drawcv"></canvas>
+  </div>
   <div class="camtop">
     <button class="cambtn" data-back>←</button>
     <div class="ttl" id="camTtl"></div>
-    <button class="cambtn" id="torch" style="display:none">🔦 ライト</button>
+    <button class="cambtn live-only" id="torch" style="display:none">🔦 ライト</button>
+    <button class="cambtn frz-only" id="toText">文字で見る</button>
   </div>
+  <div id="chip"></div>
   <div id="camerr"></div>
-  <div class="cambot">
-    <div id="camhint">読みたい所を赤い枠に入れて、白い丸を押してください</div>
-    <div class="sizes">
-      <button class="cambtn" data-size="s">小さい枠</button>
-      <button class="cambtn" data-size="m">中くらい</button>
-      <button class="cambtn" data-size="l">ページ</button>
-    </div>
-    <div class="shrow">
-      <button class="cambtn" id="pickPhoto">🖼 写真</button>
-      <button id="shutter" aria-label="撮る"></button>
-      <span></span>
+  <div id="sheet"><button class="sub x" id="sheetX">×</button><div id="sheetBody"></div></div>
+  <div class="cambot" id="cambot">
+    <div id="camhint"></div>
+    <div class="btns">
+      <button class="cambtn live-only" id="pickPhoto">🖼 写真から</button>
+      <button class="cambtn frz-only" id="retake">📷 撮り直す</button>
+      <button class="cambtn frz-only" id="readAll">ぜんぶ読む</button>
     </div>
   </div>
   <input type="file" id="photoFile" accept="image/*" hidden>
 </section>
 
-<!-- ===== 結果 ===== -->
+<!-- ===== 文字で見る ===== -->
 <section id="res" class="scr" style="flex-direction:column;background:var(--bg)">
   <div class="reshead">
-    <button class="sub" data-back>📷 もどる</button>
+    <button class="sub" data-back>← 写真にもどる</button>
     <div class="ttl" id="resTtl"></div>
-    <button class="sub" id="showPhoto">写真</button>
   </div>
   <div class="resbody">
     <div id="textbox"><div id="text"></div><canvas id="tracecv"></canvas></div>
     <div id="panel"></div>
   </div>
-  <div id="photo"><img id="photoImg" alt="撮った写真"></div>
 </section>
 
 <div id="busy"><div class="spin"></div><div id="busyMsg">読み取り中…</div></div>
@@ -203,29 +222,33 @@ const store = {
   set(k, v) { try { localStorage.setItem("yomi-" + k, JSON.stringify(v)); } catch (e) {} }
 };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const hasKanji = s => /[㐀-鿿豈-﫿々〆ヶ]/.test(s || "");
+const KANJI = /[㐀-鿿豈-﫿々〆ヶ]/;
+const hasKanji = s => KANJI.test(s || "");
 function toast(msg, ms) { const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = "none", ms || 2600); }
 function busy(on, msg) { $("busy").style.display = on ? "flex" : "none"; if (msg) $("busyMsg").textContent = msg; }
 
 // ===== 状態 =====
-const S = { mode: "daily", book: null, data: null, demo: false, sel: -1 };
+// shot：止めた写真（canvas）／words：読み取った言葉（b は写真全体に対する 0〜1000 の位置）／blocks：文字で見る用のまとまり
+const S = { mode: "daily", book: null, demo: false, frozen: false, shot: null, words: [], blocks: [], reading: false };
 
 // ===== 画面の切り替え（スマホの戻るボタンにも対応） =====
 const stack = ["home"];
 function show(id, push) {
   document.querySelectorAll(".scr").forEach(e => e.classList.toggle("on", e.id === id));
-  if (push !== false) { stack.push(id); history.pushState({ d: stack.length }, ""); }
-  if (id === "cam") startCam(); else if (id !== "res") stopCam();
+  if (push !== false) { stack.push(id); history.pushState({}, ""); }
+  if (id === "cam") enterCam(); else if (id !== "res") leaveCam();
   if (id === "home") refreshHome();
   if (id === "set") refreshSet();
   if (id === "bookscr") refreshBooks();
+  if (id === "res") renderText();
 }
 function back() { if (stack.length > 1) history.back(); }
 addEventListener("popstate", () => {
-  if ($("photo").style.display === "flex") { $("photo").style.display = "none"; history.pushState({}, ""); return; }
+  const top = stack[stack.length - 1];
+  if (top === "cam" && S.frozen && !S.demo && !S.reading) { unfreeze(); return; } // 止めた写真 → カメラに戻る
   if (stack.length > 1) { stack.pop(); show(stack[stack.length - 1], false); }
 });
-history.replaceState({ d: 1 }, "");
+history.replaceState({}, "");
 document.querySelectorAll("[data-back]").forEach(b => b.onclick = back);
 
 // ===== はじめの画面 =====
@@ -233,10 +256,7 @@ function refreshHome() { $("nokey").style.display = GEM.get() ? "none" : "block"
 $("goRead").onclick = () => { S.mode = "read"; S.demo = false; show("bookscr"); };
 $("goDaily").onclick = () => { S.mode = "daily"; S.book = null; S.demo = false; show("cam"); };
 $("goSet").onclick = () => show("set");
-$("goDemo").onclick = () => {
-  S.demo = true; S.mode = "read"; S.book = { title: "見本の文章", author: "" };
-  S.data = DEMO; S.photo = null; renderResult(); show("res");
-};
+$("goDemo").onclick = () => { S.demo = true; S.mode = "read"; S.book = { title: "見本の文章" }; show("cam"); };
 
 // ===== 本を選ぶ =====
 function books() { return store.get("books", []); }
@@ -259,8 +279,8 @@ $("coverFile").onchange = async e => {
   try {
     busy(true, "表紙を読んでいます…");
     const img = await loadImg(URL.createObjectURL(f));
-    const big = shrink(img, 1024, 0.85), thumb = shrink(img, 120, 0.7);
-    const out = await askJSON([{ text: "これは本の表紙の写真です。本の名前（タイトル）と書いた人（著者）を読み取って、JSONだけを返してください。形：{\"title\":\"…\",\"author\":\"…\"}。読み取れないものは空の文字にしてください。" }, imgPart(big)]);
+    const big = toCanvas(img, 1024).toDataURL("image/jpeg", 0.85), thumb = toCanvas(img, 120).toDataURL("image/jpeg", 0.7);
+    const out = await askJSON([{ text: "これは本やマンガの表紙の写真です。本の名前（タイトル。巻数があれば含める）と書いた人（著者）を読み取って、JSONだけを返してください。形：{\"title\":\"…\",\"author\":\"…\"}。読み取れないものは空の文字にしてください。" }, imgPart(big)]);
     $("bkTitle").value = out.title || ""; $("bkAuthor").value = out.author || "";
     $("bkThumb").src = thumb; $("bkThumb").style.display = "block";
     $("bkForm").style.display = "block";
@@ -276,7 +296,7 @@ $("bkOk").onclick = () => {
 
 // ===== 設定 =====
 function refreshSet() {
-  $("keyIn").value = GEM.get(); $("lvSel").value = String(store.get("lv", 2));
+  $("keyIn").value = GEM.get(); $("lvSel").value = String(store.get("lv", 2)); $("spdSel").value = store.get("speed", "fast");
   $("memoCount").textContent = `今、${Object.keys(store.get("memo", {})).length} 個の言葉を覚えています。`;
 }
 $("keySave").onclick = () => { const k = $("keyIn").value.trim(); if (!k) return toast("鍵を貼り付けてください"); GEM.set(k); toast("保存しました"); };
@@ -288,37 +308,43 @@ $("keyPaste").onclick = async () => {
     toast(/^AIza/.test(t) ? "貼り付けました。「保存」を押してください" : "貼り付けました。AIza…で始まる鍵か確かめてから「保存」を押してください", 3500);
   } catch (e) { $("keyIn").focus(); toast("自動で貼り付けできませんでした。入力欄を長押しして「貼り付け」を選んでください", 4000); }
 };
-$("keyDel").onclick =() => { GEM.set(""); $("keyIn").value = ""; toast("鍵を消しました"); };
+$("keyDel").onclick = () => { GEM.set(""); $("keyIn").value = ""; toast("鍵を消しました"); };
 $("lvSel").onchange = () => store.set("lv", +$("lvSel").value);
+$("spdSel").onchange = () => store.set("speed", $("spdSel").value);
 $("memoClear").onclick = () => { if (confirm("なぞって覚えた言葉をすべて消しますか？")) { store.set("memo", {}); refreshSet(); } };
 
 // ===== カメラ =====
 let stream = null, track = null;
-const SIZES = { s: [0.86, 0.16], m: [0.9, 0.34], l: [0.94, 0.62] };
-function placeFrame() {
-  const sz = store.get("size", "m"), [w, h] = SIZES[sz] || SIZES.m;
-  const W = innerWidth, H = innerHeight, fw = W * w, fh = Math.min(H * h, H - 260);
-  Object.assign($("frame").style, { left: (W - fw) / 2 + "px", top: Math.max(64, (H - fh) / 2 - 40) + "px", width: fw + "px", height: fh + "px" });
-  document.querySelectorAll("[data-size]").forEach(b => b.classList.toggle("on", b.dataset.size === sz));
+function enterCam() {
+  $("camTtl").textContent = S.demo ? "見本（鍵なしで動きを確認）" : S.book && S.mode === "read" ? "📖 " + S.book.title : "📷 ふだん使い";
+  if (S.demo && !S.frozen) { startDemo(); return; }
+  if (S.frozen) { layout(); return; }
+  setHint();
+  startCam();
 }
-document.querySelectorAll("[data-size]").forEach(b => b.onclick = () => { store.set("size", b.dataset.size); placeFrame(); });
-addEventListener("resize", () => { if ($("cam").classList.contains("on")) placeFrame(); });
+function setHint() {
+  $("camhint").innerHTML = S.frozen
+    ? (S.words.length ? "ふりがなのない漢字は<b>指でなぞる</b>と付きます。<br>ほかの所は<b>指で丸く囲う</b>と読みます。" : "読みたい所を<b>指で丸く囲って</b>ください。<br>（ページ全体なら「ぜんぶ読む」）")
+    : "読みたいページを写して、<b>画面のどこかを触る</b>と止まります";
+}
 async function startCam() {
-  placeFrame();
-  $("camTtl").textContent = S.book ? "📖 " + S.book.title : "📷 ふだん使い";
   $("camerr").style.display = "none";
   if (stream) return;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
     $("video").srcObject = stream; track = stream.getVideoTracks()[0];
     const caps = track.getCapabilities ? track.getCapabilities() : {};
-    $("torch").style.display = caps.torch ? "block" : "none";
+    $("torch").style.display = caps.torch ? "" : "none";
     if (caps.torch && store.get("torch", false)) setTorch(true);
   } catch (e) {
     stream = null;
-    $("camerr").innerHTML = "カメラを使えませんでした。<br>ブラウザでカメラを「許可」するか、<br>下の「🖼 写真」から選んでください。";
+    $("camerr").innerHTML = "カメラを使えませんでした。<br>ブラウザでカメラを「許可」するか、<br>下の「🖼 写真から」で選んでください。";
     $("camerr").style.display = "block";
   }
+}
+function leaveCam() {
+  stopCam(); S.frozen = false; S.shot = null; S.words = []; S.blocks = [];
+  $("cam").classList.remove("frz"); $("ov").innerHTML = ""; $("selrect").style.display = "none"; hideSheet();
 }
 function stopCam() { if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; track = null; } }
 async function setTorch(on) {
@@ -327,18 +353,61 @@ async function setTorch(on) {
 }
 $("torch").onclick = () => { if (!store.get("torch_tip")) { store.set("torch_tip", 1); toast("つやのある紙は光が反射します。少し斜めから撮ると読みやすくなります", 4000); } setTorch(!$("torch").classList.contains("on")); };
 
-// 枠の中だけを切り取る（画面の見え方 object-fit:cover に合わせて計算）
-function cropFrame(src, sw, sh) {
-  const W = innerWidth, H = innerHeight, sc = Math.max(W / sw, H / sh);
-  const ox = (W - sw * sc) / 2, oy = (H - sh * sc) / 2, r = $("frame").getBoundingClientRect();
-  let x = (r.left - ox) / sc, y = (r.top - oy) / sc, w = r.width / sc, h = r.height / sc;
-  x = Math.max(0, x); y = Math.max(0, y); w = Math.min(sw - x, w); h = Math.min(sh - y, h);
-  const k = Math.min(1, 1600 / Math.max(w, h)), cv = document.createElement("canvas");
-  cv.width = Math.round(w * k); cv.height = Math.round(h * k);
-  cv.getContext("2d").drawImage(src, x, y, w, h, 0, 0, cv.width, cv.height);
+// 画面に見えている所だけを切り取って止める
+function captureVisible() {
+  const v = $("video"), sw = v.videoWidth, sh = v.videoHeight, W = innerWidth, H = innerHeight;
+  const sc = Math.max(W / sw, H / sh), w = W / sc, h = H / sc, x = (sw - w) / 2, y = (sh - h) / 2;
+  const cv = document.createElement("canvas"); cv.width = Math.round(w); cv.height = Math.round(h);
+  cv.getContext("2d").drawImage(v, x, y, w, h, 0, 0, cv.width, cv.height);
   return cv;
 }
-// 明るさ・くっきりさを自動で整える（暗い所と明るい所を広げる）
+function freeze(cv) {
+  S.shot = cv; S.frozen = true; S.words = []; S.blocks = []; S.sel = -1;
+  $("still").src = cv.toDataURL("image/jpeg", 0.92);
+  $("cam").classList.add("frz");
+  if (track && $("torch").classList.contains("on")) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+  if (!S.demo) history.pushState({}, "");
+  hideSheet(); setHint();
+  $("still").onload = layout;
+}
+function unfreeze() {
+  S.frozen = false; S.shot = null; S.words = []; S.blocks = [];
+  $("cam").classList.remove("frz"); $("ov").innerHTML = ""; $("selrect").style.display = "none"; hideSheet();
+  if (track && store.get("torch", false)) setTorch(true);
+  setHint(); startCam();
+}
+$("retake").onclick = () => {
+  if (S.reading) return;
+  if (S.demo) { S.demo = false; S.mode = "daily"; S.book = null; $("camTtl").textContent = "📷 ふだん使い"; unfreeze(); }
+  else history.back();
+};
+$("pickPhoto").onclick = () => $("photoFile").click();
+$("photoFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  freeze(toCanvas(await loadImg(URL.createObjectURL(f)), 2400));
+};
+function loadImg(url) { return new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = url; }); }
+function toCanvas(img, max) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(1, max / Math.max(w, h)), cv = document.createElement("canvas");
+  cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  return cv;
+}
+const imgPart = dataUrl => ({ inline_data: { mime_type: "image/jpeg", data: dataUrl.split(",")[1] } });
+
+// 止めた写真が画面のどこに表示されているか
+function disp() {
+  const W = innerWidth, H = innerHeight, iw = S.shot.width, ih = S.shot.height, k = Math.min(W / iw, H / ih);
+  return { x: (W - iw * k) / 2, y: (H - ih * k) / 2, w: iw * k, h: ih * k };
+}
+function layout() {
+  if (!S.frozen || !S.shot) return;
+  const d = disp();
+  for (const el of [$("still"), $("ov")]) Object.assign(el.style, { left: d.x + "px", top: d.y + "px", width: d.w + "px", height: d.h + "px" });
+  renderOverlay();
+}
+addEventListener("resize", () => { if ($("cam").classList.contains("on")) layout(); if ($("res").classList.contains("on")) fitText(); });
+
+// 明るさ・くっきりさを自動で整える
 function enhance(cv) {
   const ctx = cv.getContext("2d"), d = ctx.getImageData(0, 0, cv.width, cv.height), p = d.data, hist = new Uint32Array(256);
   for (let i = 0; i < p.length; i += 4) hist[(p[i] * 77 + p[i + 1] * 150 + p[i + 2] * 29) >> 8]++;
@@ -350,87 +419,147 @@ function enhance(cv) {
   for (let i = 0; i < p.length; i += 4) { p[i] = lut[p[i]]; p[i + 1] = lut[p[i + 1]]; p[i + 2] = lut[p[i + 2]]; }
   ctx.putImageData(d, 0, 0); return cv;
 }
-$("shutter").onclick = () => {
-  const v = $("video");
-  if (!stream || !v.videoWidth) return toast("カメラが使えません。「🖼 写真」から選んでください");
-  const cv = enhance(cropFrame(v, v.videoWidth, v.videoHeight));
-  $("still").src = cv.toDataURL("image/jpeg", 0.9); $("still").style.display = "block";
-  readImage(cv).finally(() => $("still").style.display = "none");
-};
-$("pickPhoto").onclick = () => $("photoFile").click();
-$("photoFile").onchange = async e => {
-  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  const img = await loadImg(URL.createObjectURL(f));
-  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement("canvas");
-  cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
-  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-  readImage(enhance(cv));
-};
-function loadImg(url) { return new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = url; }); }
-function shrink(img, max, q) {
-  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(1, max / Math.max(w, h)), cv = document.createElement("canvas");
-  cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-  return cv.toDataURL("image/jpeg", q);
-}
-const imgPart = dataUrl => ({ inline_data: { mime_type: "image/jpeg", data: dataUrl.split(",")[1] } });
+
+// ===== 指の操作（カメラ中：触ると止まる／止めた後：囲う・なぞる・タップ） =====
+(() => {
+  const stage = $("stage"), cv = $("drawcv"); let pts = null;
+  const toN = (x, y) => { const d = disp(); return [(x - d.x) / d.w * 1000, (y - d.y) / d.h * 1000]; }; // 写真の上の位置（0〜1000）
+  const wordAtN = (nx, ny, pad) => {
+    let best = -1, bd = 1e9;
+    S.words.forEach((w, i) => {
+      if (!w.b) return; const [y0, x0, y1, x1] = w.b;
+      if (nx >= x0 - pad && nx <= x1 + pad && ny >= y0 - pad && ny <= y1 + pad) { const dd = Math.hypot(nx - (x0 + x1) / 2, ny - (y0 + y1) / 2); if (dd < bd) { bd = dd; best = i; } }
+    });
+    return best;
+  };
+  stage.addEventListener("pointerdown", e => {
+    if (!S.frozen) return;
+    if (S.reading) return toast("読み取り中です。少しお待ちください");
+    pts = [[e.clientX, e.clientY]];
+    cv.width = innerWidth; cv.height = innerHeight;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!pts) return; pts.push([e.clientX, e.clientY]);
+    const c = cv.getContext("2d"); c.clearRect(0, 0, cv.width, cv.height);
+    c.strokeStyle = "rgba(60,140,255,.75)"; c.lineWidth = 8; c.lineCap = c.lineJoin = "round";
+    c.beginPath(); pts.forEach(([x, y], k) => c[k ? "lineTo" : "moveTo"](x, y)); c.stroke();
+    const [nx, ny] = toN(e.clientX, e.clientY), i = wordAtN(nx, ny, 6);
+    if (i >= 0) document.querySelector(`#ov .w[data-i="${i}"]`)?.classList.add("tr");
+  });
+  const end = e => {
+    if (!S.frozen) { // カメラ中：触ったら止める
+      if (e.type !== "pointerup" || !stream || !$("video").videoWidth) return;
+      freeze(captureVisible()); return;
+    }
+    if (!pts) return;
+    const p = pts; pts = null;
+    cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+    document.querySelectorAll("#ov .w.tr").forEach(el => el.classList.remove("tr"));
+    const xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+    const bx = Math.min(...xs), by = Math.min(...ys), bw = Math.max(...xs) - bx, bh = Math.max(...ys) - by;
+    if (Math.max(bw, bh) < 14) { // ちょんと触れた → その言葉の説明
+      const [nx, ny] = toN(p[0][0], p[0][1]), i = wordAtN(nx, ny, 12);
+      if (i >= 0) selectWord(i); else hideSheet();
+      return;
+    }
+    const closeEnd = Math.hypot(p[p.length - 1][0] - p[0][0], p[p.length - 1][1] - p[0][1]) < Math.max(bw, bh) * 0.45;
+    const isLoop = closeEnd && bw > 30 && bh > 30;
+    if (!isLoop) { // なぞった → ふりがなを付ける／消す
+      const hit = new Set(); p.forEach(([x, y]) => { const [nx, ny] = toN(x, y), i = wordAtN(nx, ny, 6); if (i >= 0) hit.add(i); });
+      if (hit.size) return traceWords([...hit]);
+      if (bw < 40 || bh < 40) return toast("読みたい所を、指で丸く囲ってください");
+    }
+    readRegion(bx, by, bw, bh); // 囲った（または斜めに引いた）所を読む
+  };
+  stage.addEventListener("pointerup", end); stage.addEventListener("pointercancel", end);
+})();
+$("readAll").onclick = () => { if (S.reading) return; const d = disp(); readRegion(d.x, d.y, d.w, d.h); };
 
 // ===== AIに読んでもらう =====
 function prompt() {
-  const b = S.mode === "read" && S.book ? `この文章は本「${S.book.title}」${S.book.author ? `（${S.book.author}）` : ""}の一部です。この本の分野・時代・登場人物を考えて、読み方を決めてください。登場人物の名前は、この本の中での読み方にしてください。\n` : "";
-  return `あなたは日本語の読み仮名の専門家です。画像は、本・看板・書類などの一部を写したものです。
-画像の中の日本語の文章を、そのまま正確に書き起こし、言葉ごとに区切って、漢字を含む言葉に読み仮名を付けてください。
-${b}画像の端で切れている文字は書き起こさないでください。文脈から自然な読み方を選んでください（例：「今日」はきょう、「一日」は文脈でついたち/いちにち）。
-
+  const b = S.mode === "read" && S.book ? `これは本・マンガ「${S.book.title}」${S.book.author ? `（${S.book.author}）` : ""}の一部です。この作品の分野・時代・登場人物を考えて読み方を決め、登場人物の名前はこの作品の中での読み方にしてください。\n` : "";
+  return `あなたは日本語の読み仮名の専門家です。画像は、本・マンガ・看板・書類などの一部を写したものです。
+画像の中の日本語の文を書き起こし、漢字を含む言葉に読み仮名を付け、その漢字が画像のどこにあるかを示してください。
+${b}
 次の形のJSONだけを返してください。
-{"vertical": 縦書きなら true、横書きなら false,
- "lines": [ [言葉, 言葉, …], … ]}
-lines は画像の1行ごと（縦書きなら右の行から順、横書きなら上の行から順）。行の中の言葉を順に並べ、つなげると元の行と同じ文字になるようにしてください。
+{"blocks":[{"v":縦書きなら true,"lines":[[言葉,言葉,…],…]}, …]}
+- blocks は、文のまとまりごと（マンガなら吹き出しや書き文字ごと、本なら段落ごと）。
+- lines はまとまりの中の1行ごと（縦書きは右の行から、横書きは上の行から）。言葉を順に並べ、つなげると元の行と同じになるように。
 
 言葉の形：
-- 漢字を含む言葉：{"t":"表記","r":"言葉全体のひらがなの読み","lv":学年,"parts":[{"k":"漢字","r":"その漢字の読み","base":"もとの読み"}],"name":true,"alt":["ほかの読み方"],"m":"やさしい意味"}
-- 漢字を含まない部分（ひらがな・カタカナ・記号など）：{"t":"表記"}
+- 漢字を含む言葉：{"t":"表記","r":"言葉全体の読み（ひらがな）","b":[ymin,xmin,ymax,xmax],"lv":学年,"parts":[{"k":"漢字","r":"その漢字の読み","base":"もとの読み"}],"name":true,"alt":["ほかの読み方"],"m":"やさしい意味"}
+- 漢字を含まない部分：{"t":"表記"}
 
 決まり：
-- 言葉は、送り仮名を含めた単語のまとまりにする（例：「静かに」「頷いた」）。助詞は分ける。
-- parts は表記の中の漢字を順に、1字ずつ（熟字訓「今日」「大人」などは、まとめて1つ）。送り仮名は含めない。
-- base は、連濁などで読みが変わったときだけ、もとの読みを入れる（例：「空」が「ぞら」なら base は「そら」）。変わらないときは書かない。
-- lv は、その言葉の中でいちばん難しい漢字を習う学年。小学1〜6年は 1〜6、中学で習う常用漢字は 7、常用漢字にない字は 8。
-- name は、人の名前・地名・店や会社の名前のときだけ true。
-- alt は、人名・地名などで読み方が何通りもあるときだけ、よくある順に入れる（r と同じものは入れない）。
-- m は、小学生には難しい言葉のときだけ、20文字くらいのやさしい意味。この文の中での意味にする。
-- 文字が読み取れないときは {"vertical":false,"lines":[]} を返す。`;
+- b は、その言葉の中の「漢字の部分だけ」をぴったり囲む四角。画像全体を 0〜1000 とした [上, 左, 下, 右]。漢字を含む言葉には必ず付ける。
+- 言葉は、送り仮名を含めた単語のまとまり（例：「静かに」「頷いた」）。助詞は分ける。
+- parts は、漢字を1字ずつ順に（熟字訓「今日」「大人」などはまとめて1つ）。送り仮名は含めない。
+- base は、連濁などで読みが変わったときだけ、もとの読み（例：「空」が「ぞら」なら base は「そら」）。
+- lv は、いちばん難しい漢字を習う学年。小学1〜6年は 1〜6、中学の常用漢字は 7、常用漢字にない字は 8。
+- name は、人の名前・地名・店や会社の名前のときだけ true。名前にも必ず r と parts を付ける。
+- alt は、名前などで読み方が何通りもあるときだけ、よくある順に（r と同じものは入れない）。
+- m は、中学で習う漢字以上の難しい言葉のときだけ、20文字くらいのやさしい意味（この文の中での意味）。
+- 画像に元から小さく印刷されているふりがな（ルビ）は、本文として書き起こさず、その漢字の読み r として使う。
+- 昔の仮名づかい（「云ふ」「ゐる」など）は書いてあるとおりに書き起こし、r は今の読み方のひらがなにする。
+- 端で切れている文字は書き起こさない。文脈から自然な読み方を選ぶ。
+- 文字が読み取れないときは {"blocks":[]} を返す。`;
 }
-async function readImage(cv) {
-  if (!GEM.get()) { toast("⚙ 設定でGeminiの鍵を入れてください（「見本で試す」なら鍵なしで動きます）", 4000); return; }
-  const url = cv.toDataURL("image/jpeg", 0.9);
-  busy(true, "読み取り中…");
+async function readRegion(sx, sy, sw, sh) {
+  if (S.demo) return toast("見本では読み取りはできません。「📷 撮り直す」でカメラにできます", 3500);
+  if (!GEM.get()) return toast("⚙ 設定でGeminiの鍵を入れてください", 3500);
+  const d = disp();
+  // 画面の位置 → 写真の位置（はみ出しは切る・少し余白を足す）
+  const k = S.shot.width / d.w, padPx = 6;
+  let x = Math.max(0, (sx - d.x - padPx) * k), y = Math.max(0, (sy - d.y - padPx) * k);
+  let x2 = Math.min(S.shot.width, (sx + sw - d.x + padPx) * k), y2 = Math.min(S.shot.height, (sy + sh - d.y + padPx) * k);
+  if (x2 - x < 10 || y2 - y < 10) return toast("写真の上を囲ってください");
+  const R = { x: x / S.shot.width, y: y / S.shot.height, w: (x2 - x) / S.shot.width, h: (y2 - y) / S.shot.height };
+  // 送る画像：長い辺を 1024 前後に（小さい所は拡大して読みやすく、大きい所は縮めて速く）
+  const sc = Math.min(3, 1024 / Math.max(x2 - x, y2 - y)), cv = document.createElement("canvas");
+  cv.width = Math.round((x2 - x) * sc); cv.height = Math.round((y2 - y) * sc);
+  const ctx = cv.getContext("2d"); ctx.imageSmoothingQuality = "high"; ctx.drawImage(S.shot, x, y, x2 - x, y2 - y, 0, 0, cv.width, cv.height);
+  enhance(cv);
+  Object.assign($("selrect").style, { display: "block", left: (d.x + x / k) + "px", top: (d.y + y / k) + "px", width: ((x2 - x) / k) + "px", height: ((y2 - y) / k) + "px" });
+  $("selrect").classList.add("busy");
+  S.reading = true; hideSheet();
+  const t0 = Date.now(), chip = $("chip"); chip.style.display = "block";
+  const tick = setInterval(() => chip.textContent = `読み取り中… ${Math.floor((Date.now() - t0) / 1000)}秒`, 250); chip.textContent = "読み取り中… 0秒";
   try {
-    const out = await askJSON([{ text: prompt() }, imgPart(url)]);
-    if (!out || !Array.isArray(out.lines) || !out.lines.length) { toast("文字が見つかりませんでした。枠の中に文字を入れて撮り直してください", 3500); return; }
-    S.data = out; S.photo = url; renderResult(); show("res");
+    const out = await askJSON([{ text: prompt() }, imgPart(cv.toDataURL("image/jpeg", 0.88))]);
+    const n = addResult(out, R);
+    if (!n) toast("文字が見つかりませんでした。もう少し大きく写すか、囲い直してください", 3500);
+    else toast(`読み取りました（${((Date.now() - t0) / 1000).toFixed(1)}秒）`, 1800);
   } catch (err) { toast(errMsg(err), 4500); }
-  finally { busy(false); }
+  finally { clearInterval(tick); chip.style.display = "none"; S.reading = false; $("selrect").classList.remove("busy"); $("selrect").style.display = "none"; setHint(); }
 }
 async function askJSON(parts) {
-  const body = { contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } } };
+  const body = { contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.1, thinkingConfig: { thinkingBudget: 0 } } };
   const text = await geminiCall(body);
   try { return JSON.parse(text.replace(/^[^{[]*/, "").replace(/[^}\]]*$/, "")); } catch (e) { throw { code: "invalid_json" }; }
 }
-
-// ===== 結果の表示 =====
-function rubyHTML(w, show) {
-  const cls = show ? "" : ' class="hide"';
-  if (!hasKanji(w.t) || !w.r) return esc(w.t);
-  const parts = Array.isArray(w.parts) ? w.parts.filter(p => p && p.k && p.r) : [];
-  let out = "", i = 0, pi = 0;
-  while (i < w.t.length) {
-    const p = parts[pi];
-    if (p && w.t.startsWith(p.k, i)) { out += `<ruby>${esc(p.k)}<rt${cls}>${esc(p.r)}</rt></ruby>`; i += p.k.length; pi++; }
-    else { out += esc(w.t[i]); i++; }
-  }
-  if (pi !== parts.length || !parts.length) return `<ruby>${esc(w.t)}<rt${cls}>${esc(w.r)}</rt></ruby>`; // parts が合わないときは言葉全体に付ける
-  return out;
+// AIの答えを、写真全体の位置に直して加える。返り値＝見つかった言葉の数
+function addResult(out, R) {
+  let blocks = out && Array.isArray(out.blocks) ? out.blocks : out && Array.isArray(out.lines) ? [{ v: out.vertical, lines: out.lines }] : [];
+  let count = 0;
+  blocks.forEach(bl => {
+    const lines = (bl.lines || []).map(line => (line || []).filter(w => w && w.t).map(w => {
+      w.v = !!bl.v;
+      if (hasKanji(w.t) && !w.r && w.alt && w.alt[0]) w.r = w.alt[0];
+      if (Array.isArray(w.b) && w.b.length === 4) {
+        const [y0, x0, y1, x1] = w.b.map(Number);
+        w.b = [(R.y + Math.min(y0, y1) / 1000 * R.h) * 1000, (R.x + Math.min(x0, x1) / 1000 * R.w) * 1000, (R.y + Math.max(y0, y1) / 1000 * R.h) * 1000, (R.x + Math.max(x0, x1) / 1000 * R.w) * 1000];
+      } else w.b = null;
+      count++;
+      return S.words.push(w) - 1;
+    }));
+    if (lines.length) S.blocks.push({ v: !!bl.v, lines });
+  });
+  renderOverlay();
+  return count;
 }
+
+// ===== ふりがなの表示 =====
 function rubyOn(w) {
   if (!hasKanji(w.t)) return false;
   if (w.name) return true;
@@ -438,55 +567,101 @@ function rubyOn(w) {
   if (m === 1) return true; if (m === 0) return false;
   return (+w.lv || 8) > store.get("lv", 2);
 }
-function renderResult() {
-  const d = S.data; S.words = []; S.sel = -1;
-  $("resTtl").textContent = S.demo ? "見本（鍵なしの動作確認）" : S.book && S.mode === "read" ? "📖 " + S.book.title : "📷 ふだん使い";
-  $("showPhoto").style.display = S.photo ? "" : "none";
-  $("text").className = $("textbox").className = d.vertical ? "v" : "";
-  $("text").innerHTML = d.lines.map(line => (line || []).map(w => {
-    const i = S.words.push(w) - 1;
-    if (!hasKanji(w.t)) return `<span class="w" data-i="${i}">${esc(w.t)}</span>`;
-    return `<span class="w${w.name ? " name" : ""}" data-i="${i}">${rubyHTML(w, rubyOn(w))}</span>`;
-  }).join("")).join("<br>");
-  fitText();
-  setPanel(-1);
+const goodParts = w => { const ps = Array.isArray(w.parts) ? w.parts.filter(p => p && p.k && p.r) : []; let i = 0; for (const p of ps) { const j = w.t.indexOf(p.k, i); if (j < 0) return null; i = j + p.k.length; } return ps.length ? ps : null; };
+const kanjiReading = w => { const ps = goodParts(w); return ps ? ps.map(p => p.r).join("") : (w.r || "？"); };
+function renderOverlay() {
+  const ov = $("ov"); if (!S.frozen || !S.shot) { ov.innerHTML = ""; return; }
+  const d = disp();
+  ov.innerHTML = S.words.map((w, i) => {
+    if (!w.b || !hasKanji(w.t)) return "";
+    const [y0, x0, y1, x1] = w.b, L = x0 / 10, T = y0 / 10, Wd = (x1 - x0) / 10, Ht = (y1 - y0) / 10;
+    const cs = w.v ? (x1 - x0) / 1000 * d.w : (y1 - y0) / 1000 * d.h; // 1文字の大きさ（画面の点）
+    const fs = Math.max(9, Math.min(22, cs * 0.48));
+    const lab = w.v
+      ? `<span class="lab v${rubyOn(w) ? "" : " hide"}" style="left:100%;top:0;font-size:${fs}px">${esc(kanjiReading(w))}</span>`
+      : `<span class="lab${rubyOn(w) ? "" : " hide"}" style="left:0;bottom:100%;font-size:${fs}px">${esc(kanjiReading(w))}</span>`;
+    return `<div class="w${w.name ? " name" : ""}${i === S.sel ? " sel" : ""}" data-i="${i}" style="left:${L}%;top:${T}%;width:${Wd}%;height:${Ht}%">${lab}</div>`;
+  }).join("");
 }
-function fitText() {
-  const box = $("textbox"), t = $("text"); let fs = 24;
-  t.style.fontSize = fs + "px";
-  requestAnimationFrame(() => {
-    while (fs > 15 && (box.scrollHeight > box.clientHeight + 2 || box.scrollWidth > box.clientWidth + 2)) { fs -= 1; t.style.fontSize = fs + "px"; }
-  });
+function applyRuby(i) {
+  const on = rubyOn(S.words[i]);
+  document.querySelectorAll(`[data-i="${i}"] rt, [data-i="${i}"] .lab`).forEach(el => el.classList.toggle("hide", !on));
 }
-addEventListener("resize", () => { if ($("res").classList.contains("on")) fitText(); });
+function traceWords(ids) {
+  ids = ids.filter(i => hasKanji(S.words[i].t));
+  if (!ids.length) return;
+  const names = ids.filter(i => S.words[i].name), others = ids.filter(i => !S.words[i].name);
+  if (!others.length) { selectWord(names[names.length - 1]); return toast("名前には、いつもふりがなを付けています"); }
+  const memo = store.get("memo", {}), anyHidden = others.some(i => !rubyOn(S.words[i]));
+  others.forEach(i => { memo[S.words[i].t] = anyHidden ? 1 : 0; });
+  store.set("memo", memo);
+  others.forEach(applyRuby);
+  selectWord(others[others.length - 1]);
+  toast(anyHidden ? "ふりがなを付けました。次からも付けます" : "ふりがなを消しました");
+}
+
+// ===== 説明（カメラ画面は下のカード、文字で見る画面は下の欄） =====
 const LV = { 1: "小1", 2: "小2", 3: "小3", 4: "小4", 5: "小5", 6: "小6", 7: "中学", 8: "常用外" };
-function setPanel(i) {
-  document.querySelectorAll("#text .w.sel").forEach(e => e.classList.remove("sel"));
-  const w = S.words[i];
-  if (!w || !hasKanji(w.t)) {
-    $("panel").innerHTML = `<div class="note">言葉を<b>タップ</b>すると、ここに読み方が出ます。<br>ふりがなのない漢字が読めないときは、その上を<b>指でなぞって</b>ください。もう一度なぞると消えます。</div>`;
-    return;
-  }
-  document.querySelector(`#text .w[data-i="${i}"]`)?.classList.add("sel");
-  const parts = (w.parts || []).filter(p => p && p.k && p.r);
-  const brk = parts.map(p => `${esc(p.k)}：${p.base && p.base !== p.r ? `${esc(p.base)}→<b>${esc(p.r)}</b>` : esc(p.r)}`).join("／");
-  $("panel").innerHTML =
-    `<div><span class="pw">${esc(w.t)}</span><span class="pr">${esc(w.r)}</span></div>` +
+function explain(w) {
+  if (!w || !hasKanji(w.t)) return `<div class="note">言葉を<b>タップ</b>すると、ここに読み方が出ます。<br>ふりがなのない漢字は、その上を<b>指でなぞる</b>と付きます。もう一度なぞると消えます。</div>`;
+  const ps = goodParts(w) || [];
+  const brk = ps.map(p => `${esc(p.k)}：${p.base && p.base !== p.r ? `${esc(p.base)}→<b>${esc(p.r)}</b>` : esc(p.r)}`).join("／");
+  return `<div><span class="pw">${esc(w.t)}</span><span class="pr">${esc(w.r || "（読みが取れませんでした）")}</span></div>` +
     (brk ? `<div class="pp">${brk}</div>` : "") +
     (w.alt && w.alt.length ? `<div class="pp">ほかの読み方：${w.alt.map(esc).join("、")}</div>` : "") +
     (w.m ? `<div class="pp">意味：${esc(w.m)}</div>` : "") +
     `<div style="margin-top:6px">${w.lv ? `<span class="tag">${LV[w.lv] || ""}の漢字</span>` : ""}${w.name ? `<span class="tag">名前</span>` : ""}</div>` +
     (w.name ? `<div class="note" style="font-size:12px;margin-top:6px">名前の読みは推測です。ご本人や本の中の説明で確かめてください。</div>` : "");
 }
-$("showPhoto").onclick = () => { $("photoImg").src = S.photo; $("photo").style.display = "flex"; history.pushState({}, ""); };
-$("photo").onclick = () => history.back();
+function selectWord(i) {
+  S.sel = i;
+  document.querySelectorAll(".w.sel").forEach(e => e.classList.remove("sel"));
+  document.querySelectorAll(`.w[data-i="${i}"]`).forEach(e => e.classList.add("sel"));
+  const html = explain(S.words[i]);
+  $("panel").innerHTML = html;
+  if ($("cam").classList.contains("on")) {
+    $("sheetBody").innerHTML = html;
+    const sh = $("sheet"); sh.style.display = "block";
+    // 選んだ言葉が隠れないように、写真の上半分なら下に、下半分なら上に出す
+    const w = S.words[i], below = w && w.b && w.b[0] < 500;
+    sh.style.top = below ? "" : `calc(max(10px,env(safe-area-inset-top)) + 56px)`;
+    sh.style.bottom = below ? ($("cambot").offsetHeight + 4) + "px" : "";
+  }
+}
+function hideSheet() { $("sheet").style.display = "none"; S.sel = -1; document.querySelectorAll(".w.sel").forEach(e => e.classList.remove("sel")); }
+$("sheetX").onclick = hideSheet;
 
-// ===== タップ と なぞる =====
-(() => {
-  const box = $("textbox"), cv = $("tracecv"); let pts = null, hit = null, startT = 0;
+// ===== 文字で見る =====
+$("toText").onclick = () => { if (!S.blocks.length) return toast("まだ読み取った文がありません。読みたい所を指で囲ってください"); show("res"); };
+function rubyHTML(w) {
+  const cls = rubyOn(w) ? "" : ' class="hide"';
+  if (!hasKanji(w.t) || !w.r) return esc(w.t);
+  const ps = goodParts(w);
+  if (!ps) return `<ruby>${esc(w.t)}<rt${cls}>${esc(w.r)}</rt></ruby>`;
+  let out = "", i = 0;
+  for (const p of ps) { const j = w.t.indexOf(p.k, i); out += esc(w.t.slice(i, j)) + `<ruby>${esc(p.k)}<rt${cls}>${esc(p.r)}</rt></ruby>`; i = j + p.k.length; }
+  return out + esc(w.t.slice(i));
+}
+function renderText() {
+  $("resTtl").textContent = S.book && S.mode === "read" ? "📖 " + S.book.title : "📷 ふだん使い";
+  const vCount = S.blocks.filter(b => b.v).length, vert = vCount * 2 >= S.blocks.length;
+  $("text").className = $("textbox").className = vert ? "v" : "";
+  $("text").innerHTML = S.blocks.map(bl => bl.lines.map(line => line.map(i => {
+    const w = S.words[i];
+    return `<span class="w${w.name ? " name" : ""}${i === S.sel ? " sel" : ""}" data-i="${i}">${rubyHTML(w)}</span>`;
+  }).join("")).join("<br>")).join("<br><br>");
+  $("panel").innerHTML = explain(S.words[S.sel]);
+  fitText();
+}
+function fitText() {
+  const box = $("textbox"), t = $("text"); let fs = 24; t.style.fontSize = fs + "px";
+  requestAnimationFrame(() => { while (fs > 15 && (box.scrollHeight > box.clientHeight + 2 || box.scrollWidth > box.clientWidth + 2)) { fs--; t.style.fontSize = fs + "px"; } });
+}
+(() => { // 文字で見る画面の タップ と なぞる
+  const box = $("textbox"), cv = $("tracecv"); let pts = null, hit = null;
   const wordAt = (x, y) => { const e = document.elementFromPoint(x, y); const w = e && e.closest && e.closest("#text .w"); return w ? +w.dataset.i : -1; };
   box.addEventListener("pointerdown", e => {
-    pts = [[e.clientX, e.clientY]]; hit = new Set(); startT = Date.now();
+    pts = [[e.clientX, e.clientY]]; hit = new Set();
     const i = wordAt(e.clientX, e.clientY); if (i >= 0) hit.add(i);
     const r = box.getBoundingClientRect(); cv.width = r.width; cv.height = r.height;
     cv.style.top = box.scrollTop + "px"; cv.style.left = box.scrollLeft + "px";
@@ -502,27 +677,48 @@ $("photo").onclick = () => history.back();
   });
   const end = () => {
     if (!pts) return;
-    const dist = pts.length > 1 ? Math.hypot(pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1]) + pts.length : 0;
+    const p0 = pts; pts = null;
+    const dist = Math.hypot(p0[p0.length - 1][0] - p0[0][0], p0[p0.length - 1][1] - p0[0][1]) + p0.length;
     cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
     document.querySelectorAll("#text .w.tr").forEach(e => e.classList.remove("tr"));
-    const ids = [...hit].filter(i => hasKanji(S.words[i].t)); const p0 = pts; pts = null;
-    if (dist < 14) { const i = wordAt(p0[0][0], p0[0][1]); setPanel(i); return; } // ちょんと触れた → タップ
-    if (!ids.length) return;
-    const memo = store.get("memo", {});
-    const anyHidden = ids.some(i => !rubyOn(S.words[i]));
-    ids.forEach(i => {
-      const w = S.words[i]; if (w.name) return;
-      memo[w.t] = anyHidden ? 1 : 0;
-      document.querySelectorAll(`#text .w[data-i="${i}"] rt`).forEach(rt => rt.classList.toggle("hide", !anyHidden));
-    });
-    store.set("memo", memo);
-    setPanel(ids[ids.length - 1]);
-    toast(anyHidden ? "ふりがなを付けました。次からも付けます" : "ふりがなを消しました");
+    if (dist < 14) { const i = wordAt(p0[0][0], p0[0][1]); if (i >= 0) selectWord(i); return; }
+    traceWords([...hit]);
   };
   box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
 })();
 
-// ===== Gemini（使う人の鍵で、端末から直接Googleに送る。運営者には何も届かない）  ※AI家計簿と同じしくみ =====
+// ===== 見本（鍵なしで動きを確かめる。紙に縦書きした文を絵で作り、答えも用意してある） =====
+const DEMO = [
+  [{ t: "青空", r: "あおぞら", lv: 1, parts: [{ k: "青", r: "あお" }, { k: "空", r: "ぞら", base: "そら" }] }, { t: "の" }, { t: "下", r: "した", lv: 1, parts: [{ k: "下", r: "した" }] }, { t: "、" },
+   { t: "一", r: "はじめ", lv: 1, name: true, alt: ["かず", "いち"], parts: [{ k: "一", r: "はじめ" }] }, { t: "は" }, { t: "静かに", r: "しずかに", lv: 4, parts: [{ k: "静", r: "しず" }] }, { t: "頷いた", r: "うなずいた", lv: 8, parts: [{ k: "頷", r: "うなず" }], m: "首をたてにふって「はい」と示した" }, { t: "。" }],
+  [{ t: "今日", r: "きょう", lv: 2, parts: [{ k: "今日", r: "きょう" }] }, { t: "は" }, { t: "朝", r: "あさ", lv: 2, parts: [{ k: "朝", r: "あさ" }] }, { t: "から" }, { t: "仮想", r: "かそう", lv: 5, parts: [{ k: "仮", r: "か" }, { k: "想", r: "そう" }], m: "本当はないものを、あるとして考えること" }, { t: "マシン" }, { t: "を" }],
+  [{ t: "起動", r: "きどう", lv: 4, parts: [{ k: "起", r: "き" }, { k: "動", r: "どう" }], m: "機械やプログラムを動かし始めること" }, { t: "し" }, { t: "続けて", r: "つづけて", lv: 4, parts: [{ k: "続", r: "つづ" }] }, { t: "いる" }, { t: "。" }],
+  [{ t: "窓", r: "まど", lv: 6, parts: [{ k: "窓", r: "まど" }] }, { t: "の" }, { t: "外", r: "そと", lv: 2, parts: [{ k: "外", r: "そと" }] }, { t: "で" }, { t: "鶯", r: "うぐいす", lv: 8, parts: [{ k: "鶯", r: "うぐいす" }], m: "春に「ホーホケキョ」と鳴く小さな鳥" }, { t: "が" }, { t: "鳴いた", r: "ないた", lv: 2, parts: [{ k: "鳴", r: "な" }] }, { t: "。" }]
+];
+function startDemo() {
+  stopCam();
+  const W = 900, H = 1300, fs = 64, step = 70, colGap = 150, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const c = cv.getContext("2d"); c.fillStyle = "#fbf7ec"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#222"; c.font = `${fs}px "Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif`; c.textAlign = "center"; c.textBaseline = "middle";
+  const lines = JSON.parse(JSON.stringify(DEMO));
+  lines.forEach((line, li) => {
+    const cx = W - 160 - li * colGap; let y = 120;
+    line.forEach(w => {
+      let ky0 = null, ky1 = null;
+      [...w.t].forEach(ch => {
+        if ("、。".includes(ch)) c.fillText(ch, cx + fs * 0.35, y + step / 2 - fs * 0.3); else c.fillText(ch, cx, y + step / 2);
+        if (KANJI.test(ch)) { if (ky0 == null) ky0 = y; ky1 = y + step; }
+        y += step;
+      });
+      if (ky0 != null) w.b = [ky0 / H * 1000, (cx - step / 2) / W * 1000, ky1 / H * 1000, (cx + step / 2) / W * 1000];
+    });
+  });
+  freeze(cv);
+  addResult({ blocks: [{ v: true, lines: lines.map(l => l.map(w => { if (w.b) w.b = [w.b[0], w.b[1], w.b[2], w.b[3]]; return w; })) }] }, { x: 0, y: 0, w: 1, h: 1 });
+  $("camhint").innerHTML = "見本です。言葉を<b>タップ</b>、ふりがなのない漢字（青空・今日など）を<b>指でなぞって</b>みてください。";
+}
+
+// ===== Gemini（使う人の鍵で、端末から直接Googleに送る。運営者には何も届かない） ※AI家計簿と同じしくみ =====
 const ERR = {
   no_key: "⚙ 設定でGeminiの鍵を入れてください。",
   bad_key: "Geminiの鍵が正しくないようです。⚙ 設定で入れ直してください。",
@@ -536,13 +732,14 @@ const ERR = {
   invalid_json: "うまく読み取れませんでした。もう一度お試しください。",
   refused: "この画像は読み取れませんでした。別の画像でお試しください。"
 };
-const errMsg = e => ERR[e && e.code] || "うまく読み取れませんでした。明るい所で、文字が枠に収まるように撮り直してください。";
+const errMsg = e => ERR[e && e.code] || "うまく読み取れませんでした。明るい所で撮り直してください。";
 const GEM = {
   KEY: "yomi-gemini-key",
-  MODELS: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"],
+  MODELS: { fast: ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"], accurate: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"] },
   dead: {},
   get() { try { return localStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
-  set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); } catch (e) {} }
+  set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); } catch (e) {} },
+  models() { return this.MODELS[store.get("speed", "fast")] || this.MODELS.fast; }
 };
 async function geminiOnce(m, key, body) {
   const ctl = new AbortController(), guard = setTimeout(() => ctl.abort(), 60000);
@@ -562,7 +759,7 @@ async function geminiOnce(m, key, body) {
 async function geminiCall(body) {
   const key = GEM.get(); if (!key) throw { code: "no_key" };
   let last = null;
-  for (const m of GEM.MODELS.filter((x, i, l) => !GEM.dead[x] || l.every(y => GEM.dead[y]))) {
+  for (const m of GEM.models().filter((x, i, l) => !GEM.dead[x] || l.every(y => GEM.dead[y]))) {
     let r = await geminiOnce(m, key, body);
     if (r.status === 400 && body.generationConfig.thinkingConfig && !/API_KEY_INVALID|API key not valid/i.test(r.errText || "")) {
       const b2 = JSON.parse(JSON.stringify(body)); delete b2.generationConfig.thinkingConfig; r = await geminiOnce(m, key, b2);
@@ -580,15 +777,6 @@ async function geminiCall(body) {
   }
   throw last || { code: "busy" };
 }
-
-// ===== 見本（鍵なしで動きを確かめる用。Claudeが書いた短い文） =====
-const DEMO = { vertical: true, lines: [
-  [{ t: "青空", r: "あおぞら", lv: 1, parts: [{ k: "青", r: "あお" }, { k: "空", r: "ぞら", base: "そら" }] }, { t: "の" }, { t: "下", r: "した", lv: 1, parts: [{ k: "下", r: "した" }] }, { t: "、" },
-   { t: "一", r: "はじめ", lv: 1, name: true, alt: ["かず", "いち"], parts: [{ k: "一", r: "はじめ" }] }, { t: "は" }, { t: "静かに", r: "しずかに", lv: 4, parts: [{ k: "静", r: "しず" }] }, { t: "頷いた", r: "うなずいた", lv: 8, parts: [{ k: "頷", r: "うなず" }], m: "首をたてにふって「はい」と示した" }, { t: "。" }],
-  [{ t: "今日", r: "きょう", lv: 2, parts: [{ k: "今日", r: "きょう" }] }, { t: "は" }, { t: "朝", r: "あさ", lv: 2, parts: [{ k: "朝", r: "あさ" }] }, { t: "から" }, { t: "仮想", r: "かそう", lv: 5, parts: [{ k: "仮", r: "か" }, { k: "想", r: "そう" }], m: "本当はないものを、あるとして考えること" }, { t: "マシン" }, { t: "を" },
-   { t: "起動", r: "きどう", lv: 4, parts: [{ k: "起", r: "き" }, { k: "動", r: "どう" }], m: "機械やプログラムを動かし始めること" }, { t: "し" }, { t: "続けて", r: "つづけて", lv: 4, parts: [{ k: "続", r: "つづ" }] }, { t: "いる" }, { t: "。" }],
-  [{ t: "窓", r: "まど", lv: 6, parts: [{ k: "窓", r: "まど" }] }, { t: "の" }, { t: "外", r: "そと", lv: 2, parts: [{ k: "外", r: "そと" }] }, { t: "で" }, { t: "鶯", r: "うぐいす", lv: 8, parts: [{ k: "鶯", r: "うぐいす" }], m: "春に「ホーホケキョ」と鳴く小さな鳥" }, { t: "が" }, { t: "鳴いた", r: "ないた", lv: 2, parts: [{ k: "鳴", r: "な" }] }, { t: "。" }]
-] };
 
 refreshHome();
 </script>
