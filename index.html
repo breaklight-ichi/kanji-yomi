@@ -65,9 +65,12 @@ h2{font-size:17px;margin:20px 0 8px}
 #lcard .hint2{font-size:12px;color:var(--sub);margin-top:6px;text-align:center}
 .ctx{font-family:"Hiragino Mincho ProN","Noto Serif JP","Yu Mincho",serif;white-space:nowrap;line-height:1.9;font-weight:600;color:var(--ink)}
 .ctx.v{writing-mode:vertical-rl}
-.ctx rt{font-size:.5em;color:var(--rt);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-weight:700}
+.ctx rt{font-size:.5em;color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-weight:700}
+.ctx .ow{cursor:pointer;border-radius:3px}
+.ctx .ow rt.hide{visibility:hidden}
+.ctx .ow.on{background:rgba(120,170,255,.25)}
 .ctx .tgt{background:rgba(255,213,74,.55);border-radius:4px}
-.ctx .dim{opacity:.55}
+.ctx .dim{opacity:.8}
 #detail{margin-top:8px}
 .pw{font-size:22px;font-weight:700;font-family:"Hiragino Mincho ProN","Noto Serif JP",serif}
 .pr{font-size:18px;color:var(--rt);margin-left:8px;font-weight:700}
@@ -85,7 +88,7 @@ h2{font-size:17px;margin:20px 0 8px}
 
 <!-- ===== はじめの画面 ===== -->
 <section id="home" class="scr on"><div class="pad">
-  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作6</span></h1>
+  <h1>漢字よみカメラ <span style="font-size:13px;color:var(--sub)">試作7</span></h1>
   <p class="note">読めない漢字をカメラで写して指で触れると、その漢字のふりがなと説明を出します。</p>
   <div id="nokey" class="warn" style="display:none">はじめに「⚙ 設定」で、Geminiの鍵を入れてください。<br>鍵がなくても「見本で試す」で動きを見られます。</div>
   <button class="big" id="goRead">📖 読書モード<small>本やマンガの名前を入れてから読みます。読みの正しさが上がります</small></button>
@@ -248,12 +251,14 @@ $("coverFile").onchange = async e => {
   try {
     busy(true, "表紙を読んでいます…");
     const img = await loadImg(URL.createObjectURL(f));
-    const big = toCanvas(img, 1024).toDataURL("image/jpeg", 0.85), thumb = toCanvas(img, 120).toDataURL("image/jpeg", 0.7);
-    const out = await askJSON([{ text: "これは本やマンガの表紙の写真です。本の名前（タイトル。巻数があれば含める）と書いた人（著者）を読み取って、JSONだけを返してください。形：{\"title\":\"…\",\"author\":\"…\"}。読み取れないものは空の文字にしてください。" }, imgPart(big)]);
-    $("bkTitle").value = out.title || ""; $("bkAuthor").value = out.author || "";
+    const big = enhance(toCanvas(img, 1600)).toDataURL("image/jpeg", 0.88), thumb = toCanvas(img, 120).toDataURL("image/jpeg", 0.7); // 暗い写真は明るくしてから送る
+    const out = await askJSON([{ text: "これは本やマンガの表紙の写真です。暗い・ぼやけている・斜めに写っていても、読める文字から本の名前（タイトル。巻数があれば含める）と書いた人（著者）を読み取って、JSONだけを返してください。形：{\"title\":\"…\",\"author\":\"…\"}。少しでも読めれば推測で入れてください。まったく読めないときだけ空の文字にしてください。写真の状態についての説明は書かないでください。" }, imgPart(big)]);
+    const bad = s => !s || /読み取れ|読めな|暗|不明|わかりません|分かりません/.test(s); // 「暗くて読めない」などの説明は名前として入れない
+    $("bkTitle").value = bad(out.title) ? "" : out.title; $("bkAuthor").value = bad(out.author) ? "" : out.author;
+    if (bad(out.title)) toast("本の名前を読み取れませんでした。⌨ で入れてください（表紙の写真は一覧に使います）", 4000);
     $("bkThumb").src = thumb; $("bkThumb").style.display = "block";
     $("bkForm").style.display = "block";
-    toast("読み取った名前を確かめて、違っていたら直してください", 3500);
+    if (!bad(out.title)) toast("読み取った名前を確かめて、違っていたら直してください", 3500);
   } catch (err) { toast(errMsg(err), 4000); }
   finally { busy(false); }
 };
@@ -433,8 +438,12 @@ function enhance(cv) {
   const n = p.length / 4; let acc = 0, lo = 0, hi = 255;
   for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > n * 0.01) { lo = v; break; } }
   acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > n * 0.01) { hi = v; break; } }
-  if (hi - lo < 40 || (lo < 8 && hi > 247)) return cv;
-  const lut = new Uint8ClampedArray(256); for (let v = 0; v < 256; v++) lut[v] = (v - lo) * 255 / (hi - lo);
+  if (hi - lo < 20) return cv;
+  // 暗いときは明るく（明るさの真ん中が 150 くらいになるように持ち上げる）
+  let sum = 0; for (let v = 0; v < 256; v++) sum += hist[v] * Math.max(0, Math.min(255, (v - lo) * 255 / (hi - lo)));
+  const mean = sum / n, g = mean < 120 ? Math.max(0.35, Math.log(150 / 255) / Math.log(Math.max(1, mean) / 255)) : 1;
+  if (g === 1 && lo < 8 && hi > 247) return cv;
+  const lut = new Uint8ClampedArray(256); for (let v = 0; v < 256; v++) lut[v] = 255 * Math.pow(Math.max(0, Math.min(1, (v - lo) / (hi - lo))), g);
   for (let i = 0; i < p.length; i += 4) { p[i] = lut[p[i]]; p[i + 1] = lut[p[i + 1]]; p[i + 2] = lut[p[i + 2]]; }
   ctx.putImageData(d, 0, 0); return cv;
 }
@@ -536,13 +545,14 @@ ${b}次の形で1行だけ書いてください。説明や前置き、\`\`\` �
 - 読み：漢字のかたまりの読み（ひらがな）。前後の文に合う読み方。
 - 前：同じセリフ（吹き出し）または同じ文の中で、言葉より前にある文字すべて（40文字まで）。行が変わる所に ／ を入れる。なければ空
 - 後：同じセリフまたは同じ文の中で、言葉より後にある文字すべて（40文字まで）。行が変わる所に ／ を入れる。なければ空
+- 前と後の中の漢字にも、漢字のかたまりのすぐ後ろに《読み》を付ける（例：見上《みあ》げた）
 - 学年：いちばん難しい漢字を習う学年。小学1〜6年は 1〜6、中学の常用漢字は 7、常用漢字にない字は 8
 - 名：人の名前・地名・店や会社の名前なら 名、ちがえば空
 - 内訳：2字以上のときだけ、1字ずつの読み（例：青=あお,空=ぞら<そら。< の後ろは、もとの読み）。熟字訓（今日・大人など）は空
 - ほか：名前などで読み方が何通りもあるときだけ、ほかの読み方を「,」で区切る
 - 意味：言葉のやさしい意味（25文字くらい。この文の中での意味）
 
-例：縦|青空|青空|あおぞら|見上げた／|の下で、／二人は笑った|1||青=あお,空=ぞら<そら||晴れた青い空
+例：縦|青空|青空|あおぞら|見上《みあ》げた／|の下《した》で、／二人《ふたり》は笑《わら》った|1||青=あお,空=ぞら<そら||晴れた青い空
 
 - 画像に元から小さく印刷されているふりがな（ルビ）があれば、それを読みに使う。
 - 昔の仮名づかいの文でも、読みは今の読み方のひらがなにする。
@@ -590,9 +600,16 @@ const LV = { 1: "小1", 2: "小2", 3: "小3", 4: "小4", 5: "小5", 6: "小6", 7
 function showResult(r) {
   if (!r) { $("ctx").innerHTML = ""; $("hint2").style.display = "none"; $("detail").style.display = "block"; $("detail").innerHTML = `<div class="pp">ここには漢字が見つかりませんでした。漢字の真ん中に触れてみてください。</div>`; return; }
   // セリフ全体を、行の区切り（／）どおりに書く。触った言葉だけにふりがな
-  const br = s => esc(s).replace(/[／\/]/g, "<br>");
-  const lines = (r.before + r.full + r.after).split(/[／\/]/), maxLen = Math.max(...lines.map(s => [...s].length)), box = $("ctx");
+  // 前後の文：《読み》の付いた漢字は、触れるとふりがなが出るようにしておく（最初は隠す）
+  const ORUN = /([\u3400-\u9fff\uf900-\ufaff々〆ヶ]+)《([^》]*)》/g;
+  const tx = s => esc(s).replace(/[／\/]/g, "<br>"); // 文字の部分だけ、行の区切りを改行に
+  const br = s => { let out = "", last = 0, m; ORUN.lastIndex = 0;
+    while ((m = ORUN.exec(s))) { out += tx(s.slice(last, m.index)) + `<ruby class="ow">${esc(m[1])}<rt class="hide">${esc(m[2])}</rt></ruby>`; last = m.index + m[0].length; }
+    return out + tx(s.slice(last)); };
+  const plain = s => s.replace(ORUN, "$1");
+  const lines = (plain(r.before) + r.full + plain(r.after)).split(/[／\/]/), maxLen = Math.max(...lines.map(s => [...s].length)), box = $("ctx");
   box.innerHTML = `<div class="ctx${r.v ? " v" : ""}"><span class="dim">${br(r.before)}</span>${rubyWord(r)}<span class="dim">${br(r.after)}</span></div>`;
+  box.querySelectorAll(".ow").forEach(o => o.onclick = () => { const rt = o.querySelector("rt"), on = rt.classList.toggle("hide"); o.classList.toggle("on", !on); });
   // 枠に収まる大きさに
   const el = box.firstChild; let fs = Math.min(30, ((r.v ? box.clientHeight : box.clientWidth) - 14) / Math.max(4, maxLen));
   el.style.fontSize = fs + "px";
@@ -646,7 +663,8 @@ function demoLookup(ix, iy) {
   if (!best || bd > 60) return null;
   const w = best.words.find(w => best.ci >= w.s && best.ci < w.e); if (!w) return null;
   const full = w.t + (w.f[2] === "名" ? "" : (w.f[4] || "")); // 送り仮名は見本の答えに書いてある
-  const r = { v: true, t: w.t, full, r: w.f[0], lv: +w.f[1] || 8, before: best.plain.slice(0, w.s), after: best.plain.slice(w.s + full.length) };
+  const mk = (s, e) => { let out = "", i = s; best.words.forEach(o => { if (o.s >= s && o.e <= e) { out += best.plain.slice(i, o.e) + "《" + o.f[0] + "》"; i = o.e; } }); return out + best.plain.slice(i, e); };
+  const r = { v: true, t: w.t, full, r: w.f[0], lv: +w.f[1] || 8, before: mk(0, w.s), after: mk(w.s + full.length, best.plain.length) };
   if (w.f[2] === "名") { r.name = true; r.alt = (w.f[3] || "").split(","); }
   else { if (w.f[2]) r.parts = w.f[2].split(",").map(s => { const m = s.match(/^(.+?)=([^<]+)(?:<(.+))?$/); return m ? { k: m[1], r: m[2], base: m[3] } : null; }).filter(Boolean); r.m = w.f[3] || ""; }
   return r;
